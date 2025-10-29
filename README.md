@@ -8,3 +8,10 @@ convert it into forces that can be interpreted to measure bit wear and material 
 Authors: 
 Sophia Mimlitz, Kobe Prior
 
+To upload to esp32 from arduino IDE
+    File>Preferences> 
+    type: https://dl.espressif.com/dl/package_esp32_index.json
+    into additional boards manager urls
+    Tools > Board manager
+    type esp32 and install 
+    use an chip id example file to confirm it is working properly
