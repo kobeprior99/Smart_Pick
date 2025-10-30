@@ -35,66 +35,80 @@
 
 //wire library for i23
 #include <Wire.h>
+//functions to generate bit masks
+#define NO_OS_BIT(x) (1U << (x))
+#define NO_OS_GENMASK(h, l) (((0xFF << (l)) & (0xFF >> (7 - (h)))))
+//define registers from the driver file:
+/* AD7746 Slave Address */
+#define AD7746_ADDRESS			0x48
 
-#define AD7746_ADDRESS 0x48  // 7-bit I2C address
+/* AD7746 Reset command */
+#define AD7746_RESET_CMD		0xBF
 
-#define REG_STATUS_CAP 0x00
-#define REG_CAP_SETUP  0x07
-#define REG_EXC_SETUP  0x08
-#define REG_CONFIG     0x09
+/* AD7746 Register Definition */
+#define AD7746_REG_STATUS		0u
+#define AD7746_REG_CAP_DATA_HIGH	1u
+#define AD7746_REG_CAP_DATA_MID		2u
+#define AD7746_REG_CAP_DATA_LOW		3u
+#define AD7746_REG_VT_DATA_HIGH		4u
+#define AD7746_REG_VT_DATA_MID		5u
+#define AD7746_REG_VT_DATA_LOW		6u
+#define AD7746_REG_CAP_SETUP		7u
+#define AD7746_REG_VT_SETUP		8u
+#define AD7746_REG_EXC_SETUP		9u
+#define AD7746_REG_CFG			10u
+#define AD7746_REG_CAPDACA		11u
+#define AD7746_REG_CAPDACB		12u
+#define AD7746_REG_CAP_OFFH		13u
+#define AD7746_REG_CAP_OFFL		14u
+#define AD7746_REG_CAP_GAINH		15u
+#define AD7746_REG_CAP_GAINL		16u
+#define AD7746_REG_VOLT_GAINH		17u
+#define AD7746_REG_VOLT_GAINL		18u
 
-void setup() {
-  Serial.begin(115200);
-  Wire.begin();
+#define AD7746_NUM_REGISTERS		(AD7746_REG_VOLT_GAINL + 1u)
 
-  // Give device a moment after power-up
-  delay(100);
+/* AD7746_REG_STATUS bits */
+#define AD7746_STATUS_EXCERR_MSK	NO_OS_BIT(3)
+#define AD7746_STATUS_RDY_MSK		NO_OS_BIT(2)
+#define AD7746_STATUS_RDYVT_MSK		NO_OS_BIT(1)
+#define AD7746_STATUS_RDYCAP_MSK	NO_OS_BIT(0)
 
-  // Configure excitation (enable EXCA+)
-  Wire.beginTransmission(AD7746_ADDRESS);
-  Wire.write(REG_EXC_SETUP);
-  Wire.write(0b00010001); // Enable EXCA, default freq
-  Wire.endTransmission();
+/* AD7746_REG_CAP_SETUP bits */
+#define AD7746_CAPSETUP_CAPEN_MSK	NO_OS_BIT(7)
+#define AD7746_CAPSETUP_CIN2_MSK	NO_OS_BIT(6)
+#define AD7746_CAPSETUP_CAPDIFF_MSK	NO_OS_BIT(5)
+#define AD7746_CAPSETUP_CAPCHOP_MSK	NO_OS_BIT(0)
 
-  // Configure capacitance measurement: enable CH1, single-ended
-  Wire.beginTransmission(AD7746_ADDRESS);
-  Wire.write(REG_CAP_SETUP);
-  Wire.write(0b00010001); // Enable CAP channel A, single-ended, CAPEN=1
-  Wire.endTransmission();
+/* AD7746_REG_VT_SETUP bits */
+#define AD7746_VTSETUP_VTEN_MSK		NO_OS_BIT(7)
+#define AD7746_VTSETUP_VTMD_MSK		NO_OS_GENMASK(6,5)
+#define AD7746_VTSETUP_EXTREF_MSK	NO_OS_BIT(4)
+#define AD7746_VTSETUP_VTSHORT_MSK	NO_OS_BIT(1)
+#define AD7746_VTSETUP_VTCHOP_MSK	NO_OS_BIT(0)
 
-  // Configure continuous conversion, default data rate
-  Wire.beginTransmission(AD7746_ADDRESS);
-  Wire.write(REG_CONFIG);
-  Wire.write(0b00000000); // Continuous mode, default gain/rate
-  Wire.endTransmission();
+/* AD7746_REG_EXC_SETUP bits */
+#define AD7746_EXCSETUP_CLKCTRL_MSK	NO_OS_BIT(7)
+#define AD7746_EXCSETUP_EXCON_MSK	NO_OS_BIT(6)
+#define AD7746_EXCSETUP_EXCB_MSK	NO_OS_GENMASK(5,4)
+#define AD7746_EXCSETUP_EXCA_MSK	NO_OS_GENMASK(3,2)
+#define AD7746_EXCSETUP_EXCLVL_MSK	NO_OS_GENMASK(1,0)
 
-  Serial.println("CN0552 (AD7746) configured and ready.");
+/* AD7746_REG_CFG bits */
+#define AD7746_CONF_VTF_MSK		NO_OS_GENMASK(7,6)
+#define AD7746_CONF_CAPF_MSK		NO_OS_GENMASK(5,3)
+#define AD7746_CONF_MD_MSK		NO_OS_GENMASK(2,0)
+
+/* AD7746_REG_CAPDACx bits */
+#define AD7746_CAPDAC_DACEN_MSK		NO_OS_BIT(7)
+#define AD7746_CAPDAC_DACP_MSK		NO_OS_GENMASK(6,0)
+
+void setup(){
+  //enable i2c
+  Wire.beginTransmission(AD7746_ADDRESS)
+  //startbit -> register address pointer
+  Wire.write()
 }
-
-bool dataReady() {
-  Wire.beginTransmission(AD7746_ADDRESS);
-  Wire.write(REG_STATUS_CAP);
-  Wire.endTransmission(false);
-  Wire.requestFrom(AD7746_ADDRESS, 1);
-  if (Wire.available()) {
-    byte status = Wire.read();
-    return (status & 0x80); // D7=1 means new CAP data ready
-  }
-  return false;
-}
-
-long readCapacitanceRaw() {
-  Wire.beginTransmission(AD7746_ADDRESS);
-  Wire.write(REG_STATUS_CAP);
-  Wire.endTransmission(false);
-  Wire.requestFrom(AD7746_ADDRESS, 3);
-  long capData = 0;
-  if (Wire.available() >= 3) {
-    capData = ((long)Wire.read() << 16) | ((long)Wire.read() << 8) | Wire.read();
-  }
-  return capData;
-}
-
 void loop() {
   if (dataReady()) {
     long raw = readCapacitanceRaw();
