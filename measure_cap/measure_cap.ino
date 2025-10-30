@@ -27,13 +27,12 @@
     Full-scale (changing) capactiance range +/- 4 pF
     Update Rate 10Hz to 90 Hz, why we might need accelarometer for harmonics
 
-
   //register definitions come from no os driver header file 
   //https://github.com/analogdevicesinc/no-OS/blob/main/drivers/cdc/ad7746/ad7746.h
   ==============================================================================  
 */
 
-//wire library for i23
+//wire library for i2c
 #include <Wire.h>
 //functions to generate bit masks
 #define NO_OS_BIT(x) (1U << (x))
@@ -105,32 +104,42 @@
 
 //helper functions
 void writeRegister(uint8_t subaddress, uint8_t value){
+  //start transmission with CDC
   Wire.beginTransmission(AD7746_ADDRESS);
+  //set address pointer register to subaddress
   Wire.write(subaddress);
+  //write a byte to the address pointed to above
   Wire.write(value); 
   Wire.endTransmission();
 }
 
 uint8_t readRegister(uint8_t subaddress){
+  //start transmission with CDC
   Wire.beginTransmission(AD7746_ADDRESS);
+  //set address pointer register to subaddress
   Wire.write(subaddress);
   Wire.endTransmission(false);
+  //read from the address pointed to from above
   Wire.requestFrom(AD7746_ADDRESS, 1);
   if(Wire.available()) return Wire.read();
   return 0; 
 }
 
 bool dataReady(){
-  //its in the status register to check if data ready
+  //get RDY bit from status register 
   uint8_t status = readRegister(AD7746_REG_STATUS);
+
   // RDYCAP = 0 means data ready
   return (status & AD7746_STATUS_RDYCAP_MSK) == 0b00000000;
 }
 
 long readCapacitanceRaw(){
+  //the device address
   Wire.beginTransmission(AD7746_ADDRESS);
+  //register address pointer
   Wire.write(AD7746_REG_CAP_DATA_HIGH);
   Wire.endTransmission(false);
+  //read 3 bytes and stich them together, address pointer auto incrememnts
   Wire.requestFrom(AD7746_ADDRESS,3); 
   if (Wire.available()<3) return -1; //error
   long raw = ((long)Wire.read()<<16) | ((long)Wire.read()<<8) | ((long)Wire.read());
@@ -138,9 +147,12 @@ long readCapacitanceRaw(){
 }
 
 void setup(){
+  //start serial
   Serial.begin(115200);
+  //start i2c
   Wire.begin(); // SDA=21, SCL=22 default on ESP32
-  //enable i2c
+
+  //reset the CDC
   Wire.beginTransmission(AD7746_ADDRESS);
   Wire.write(AD7746_RESET_CMD);
   Wire.endTransmission();
@@ -148,7 +160,7 @@ void setup(){
 
   // Enable capacitance channel (mode)
   writeRegister(AD7746_REG_CAP_SETUP, AD7746_CAPSETUP_CAPEN_MSK);
-  //enable continuous conversion
+  //enable continuous conversion 
   writeRegister(AD7746_REG_CFG,0xA0|0b00000001);
   //enable excitation
   writeRegister(AD7746_REG_EXC_SETUP, 0x03|0b00001000);
@@ -156,11 +168,11 @@ void setup(){
 }
 
 void loop() {
+  //check if data ready then read capacitance 
   if (dataReady()) {
     long raw = readCapacitanceRaw();
-    double capacitance = (raw / 268435456.0 - 1.0) * 8.192e-12; // convert to farads (from datasheet)
-    Serial.print("Capacitance: ");
-    // Serial.print(capacitance * 1e12, 3);
+    //print capacitance to serial monitor
+    Serial.print("Capacitance Raw: ");
     Serial.print(raw);
     Serial.println(" ");
   }
