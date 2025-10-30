@@ -104,10 +104,31 @@
 #define AD7746_CAPDAC_DACP_MSK		NO_OS_GENMASK(6,0)
 
 void setup(){
+  
   //enable i2c
-  Wire.beginTransmission(AD7746_ADDRESS)
+  Wire.beginTransmission(AD7746_ADDRESS);
   //startbit -> register address pointer
-  Wire.write()
+  Wire.write(AD7746_REG_CAP_SETUP);
+  Wire.endTransmission();
+  Wire.beginTransmission()
+  Wire.write(AD7746_CAPSETUP_CAPEN_MSK);
+
+
+}
+bool dataReady(){
+  //its in the status register to check if data ready
+  //point to the status register address 
+  Wire.write(AD7746_REG_STATUS)
+  ready = Wire.read()
+  //ready is active low
+  ready = ready ~& AD7746_STATUS_RDY_MSK
+  return ready 
+}
+long readCapacitanceRaw(){
+  Wire.beginTransmission(AD7746_ADDRESS)
+  Wire.write(AD7746_REG_CAP_DATA_HIGH)
+  long raw = (Wire.read()<<16)|(Wire.read()<<8)|(Wire.read());
+  return raw
 }
 void loop() {
   if (dataReady()) {
