@@ -103,33 +103,54 @@
 #define AD7746_CAPDAC_DACEN_MSK		NO_OS_BIT(7)
 #define AD7746_CAPDAC_DACP_MSK		NO_OS_GENMASK(6,0)
 
-void setup(){
-  
-  //enable i2c
+//helper functions
+void writeRegister(byte subaddress, byte value){
   Wire.beginTransmission(AD7746_ADDRESS);
-  //startbit -> register address pointer
-  Wire.write(AD7746_REG_CAP_SETUP);
+  Wire.write(subaddress);
+  Wire.write(value); 
   Wire.endTransmission();
-  Wire.beginTransmission()
-  Wire.write(AD7746_CAPSETUP_CAPEN_MSK);
-
-
 }
+
+byte readRegister(byte subaddress){
+  Wire.beginTransmission(AD7746_ADDRESS);
+  Wire.write(subaddress);
+  Wire.endTransmission(false);
+  Wire.requestFrom(AD7746_ADDRESS, 1);
+  if(Wire.availabe()) return Wire.read();
+  return 0; 
+}
+
 bool dataReady(){
   //its in the status register to check if data ready
-  //point to the status register address 
-  Wire.write(AD7746_REG_STATUS)
-  ready = Wire.read()
-  //ready is active low
-  ready = ready ~& AD7746_STATUS_RDY_MSK
-  return ready 
+  byte status = readRegister(AD7746_REG_STATUS)
+  // RDYCAP = 0 means data ready
+  return (status & AD7746_STATUS_RDYCAP_MSK) == 0;
+  return ready;
 }
+
 long readCapacitanceRaw(){
-  Wire.beginTransmission(AD7746_ADDRESS)
-  Wire.write(AD7746_REG_CAP_DATA_HIGH)
-  long raw = (Wire.read()<<16)|(Wire.read()<<8)|(Wire.read());
-  return raw
+  Wire.beginTransmission(AD7746_ADDRESS);
+  Wire.write(AD7746_REG_CAP_DATA_HIGH);
+  Wire.endTransmission(false);
+  Wire.requestFrom(AD7746_ADDRESS,3); 
+  if (Wire.available()<3) return -1//error
+  long raw = ((long)Wire.read()<<16) | ((long)Wire.read()<<8) | ((long)Wire.read());
+  return raw & 0xFFFFFF;//24-bit
 }
+void setup(){
+  Serial.begin(115200) 
+  Wire.begin(); // SDA=21, SCL=22 default on ESP32
+  //enable i2c
+  Wire.beginTransmission(AD7746_ADDRESS);
+  Wire.write(AD7746_RESET_CMD);
+  Wire.endTransmission();
+  delay(10);
+  // Enable capacitance channel (mode)
+  writeRegister(AD7746_REG_CAP_SETUP, AD7746_CAPSETUP_CAPEN_MSK);
+  //enable continuous conversion
+  writeRegister(AD7746_REG_CFG,0xA0|0b00000001);
+}
+
 void loop() {
   if (dataReady()) {
     long raw = readCapacitanceRaw();
