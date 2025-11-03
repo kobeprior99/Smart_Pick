@@ -160,11 +160,12 @@ void setup(){
 
   // Enable capacitance channel (mode)
   writeRegister(AD7746_REG_CAP_SETUP, AD7746_CAPSETUP_CAPEN_MSK);
-  //enable continuous conversion 
-  writeRegister(AD7746_REG_CFG,0xA0|0b00000001);
+  //enable continuous conversion and faster sampling rate
+  writeRegister(AD7746_REG_CFG,0b10000001);
   //enable excitation
   writeRegister(AD7746_REG_EXC_SETUP, 0x03|0b00001000);
-  
+  //enable 90 sps  
+  writeRegister()
 }
 
 void loop() {

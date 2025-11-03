@@ -1,8 +1,53 @@
+/*
+  ==============================================================================  
+  Project: cap_and_accel.ino  
+  File:    measure_cap.ino
+  Authors: Kobe Prior and Sophia Mimlitz  
+  Date:    October 30, 2025  
+
+  Description:  
+  This program samples capacitance values and positional data using an ESP32 microcontroller  
+  interfaced with the CN0552-PMDZ Capacitance-to-Digital Converter (CDC) board and 
+  the MPU6050 accelerometer simultaenously.
+
+  The ESP32 polls the CDC via I²C (depending on configuration) to measure  
+  real-time capacitance for sensor evaluation and data logging applications.  
+  Also measures positional data to extract harmonics
+  
+  Hardware Setup:
+    SDA CN0552 -> GPIO 21 ESP32
+    SCL CN0552 -> GPIO 22 ESP32
+    SDA MPU6050 -> GPIO 
+    SCL MPU6050 -> GPIO  
+    add 4.7kΩ pull-up resistor to SDA/SCL
+  CN0552
+    +/- 4.096 pF at maximum bulk capacitance of 17 pF
+    can be extended to 50 pF with maximum bulk capacitance of 200 pF
+    use 16.1 SPS for 50/60 Hz rejection
+    we can probably use 90 sps
+
+    Resolution down to 4aF
+    Accuracy: 4 fF
+    Common mode (not changing) capacitance up to 17 pF
+    Full-scale (changing) capactiance range +/- 4 pF
+    Update Rate 10Hz to 90 Hz, why we might need accelarometer for harmonics
+
+  //register definitions come from no os driver header file 
+  //https://github.com/analogdevicesinc/no-OS/blob/main/drivers/cdc/ad7746/ad7746.h
+  ==============================================================================  
+*/
+
+
+
 //accelerometer library
 #include <MPU6050.h>
 //wire library for i2c
 #include <Wire.h>
-
+#include <math.h>
+// Global variables shared between tasks
+volatile double ax = 0;
+volatile double ay = 0;
+volatile double az = 0;
 //functions to generate bit masks
 #define NO_OS_BIT(x) (1U << (x))
 #define NO_OS_GENMASK(h, l) (((0xFF << (l)) & (0xFF >> (7 - (h)))))
@@ -74,7 +119,56 @@ TaskHandle_t capTaskHandle;
 TaskHandle_t accelTaskHandle;
 
 
+//Capacitance-to-Digital functions
+//helper functions
+void writeRegister(uint8_t subaddress, uint8_t value){
+  //start transmission with CDC
+  Wire.beginTransmission(AD7746_ADDRESS);
+  //set address pointer register to subaddress
+  Wire.write(subaddress);
+  //write a byte to the address pointed to above
+  Wire.write(value); 
+  Wire.endTransmission();
+}
 
+uint8_t readRegister(uint8_t subaddress){
+  //start transmission with CDC
+  Wire.beginTransmission(AD7746_ADDRESS);
+  //set address pointer register to subaddress
+  Wire.write(subaddress);
+  Wire.endTransmission(false);
+  //read from the address pointed to from above
+  Wire.requestFrom(AD7746_ADDRESS, 1);
+  if(Wire.available()) return Wire.read();
+  return 0; 
+}
+
+bool dataReady(){
+  //get RDY bit from status register 
+  uint8_t status = readRegister(AD7746_REG_STATUS);
+
+  // RDYCAP = 0 means data ready
+  return (status & AD7746_STATUS_RDYCAP_MSK) == 0b00000000;
+}
+
+long readCapacitanceRaw(){
+  //the device address
+  Wire.beginTransmission(AD7746_ADDRESS);
+  //register address pointer
+  Wire.write(AD7746_REG_CAP_DATA_HIGH);
+  Wire.endTransmission(false);
+  //read 3 bytes and stich them together, address pointer auto incrememnts
+  Wire.requestFrom(AD7746_ADDRESS,3); 
+  if (Wire.available()<3) return -1; //error
+  long raw = ((long)Wire.read()<<16) | ((long)Wire.read()<<8) | ((long)Wire.read());
+  return raw & 0xFFFFFF;//24-bit
+}
+
+//Accelerometer functions
+double getTotalAccel(){
+    mpu.update();
+    return (double) sqrt(mpu.getAccX()^2+mpu.getAccY^2+mpu.getAccZ()^2)
+}
 
 //---------------- Capacitance Task (Core 0) ----------------//
 void capacitanceTask(void *parameter) {
@@ -84,22 +178,16 @@ void capacitanceTask(void *parameter) {
       Serial.print("[Core 0] Capacitance Raw: ");
       Serial.println(raw);
     }
-    vTaskDelay(50 / portTICK_PERIOD_MS); // small delay to yield CPU
+    vTaskDelay(11 / portTICK_PERIOD_MS); // small delay to yield CPU
   }
 }
 
 //---------------- Accelerometer Task (Core 1) ----------------//
 void accelTask(void *parameter) {
   for (;;) {
-    mpu.update();
-    float ax = mpu.getAccX();
-    float ay = mpu.getAccY();
-    float az = mpu.getAccZ();
-    Serial.print("[Core 1] Accel (g): ");
-    Serial.print(ax, 3); Serial.print(", ");
-    Serial.print(ay, 3); Serial.print(", ");
+
     Serial.println(az, 3);
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    vTaskDelay(11 / portTICK_PERIOD_MS);
   }
 }
 
@@ -110,16 +198,20 @@ void setup() {
   Serial.println("Initializing...");
 
   // Initialize I2C buses
-  Wire.begin(21, 22);   // Capacitance (AD7746)
-  Wire1.begin(25, 26);  // Accelerometer (MPU6050)
+  Wire.begin();   // Capacitance (AD7746) default addy
+  Wire1.begin(25, 26, 400000);  // Accelerometer (MPU6050) set 400KHz
 
   //---- AD7746 Configuration ----//
+  //reset the CDC
   Wire.beginTransmission(AD7746_ADDRESS);
   Wire.write(AD7746_RESET_CMD);
   Wire.endTransmission();
   delay(10);
+  //enable cap read
   writeRegister(AD7746_REG_CAP_SETUP, AD7746_CAPSETUP_CAPEN_MSK);
+  //continuous mode
   writeRegister(AD7746_REG_CFG, 0xA0 | 0b00000001);
+  //enable excitation
   writeRegister(AD7746_REG_EXC_SETUP, 0x03 | 0b00001000);
 
   //---- MPU6050 Configuration ----//
