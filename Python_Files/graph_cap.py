@@ -4,7 +4,7 @@ Date: NOV 3, 2025
 Purpose: Graph raw capacitance vs time from esp32 serial output.
 '''
 #import required libraries
-import serial, serial.tools.list_ports
+import serial, serial.tools.list_ports, time
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from collections import deque
@@ -32,8 +32,6 @@ def select_ser_port():
         except:
             print("Please enter a valid number.")
 
-
-
 def main():
     '''
     Graph capacitance vs time
@@ -44,6 +42,8 @@ def main():
         exit()
 
     ser = serial.Serial(port, BAUD, timeout=1)
+    time.sleep(.5) #wait for esp to reset
+
     print(f'Connected to {port} at {BAUD} baud.')
     #plot
     MAX_POINTS = 300 # number of samples visible
@@ -65,12 +65,14 @@ def main():
             return line, 
         #Expect format TIME,<t>,CAP,<c>
         parts = line_in.split(',')
+        #debug print
+        # print(parts)
         try:
             if len(parts) == 4 and parts[0] == "TIME" and parts[2] == "CAP":
                 t = float(parts[1])
-                c = float(parts[3])
+                c_raw = float(parts[3])
+                caps.append(c_raw)
                 times.append(t)
-                caps.append(c)
                 line.set_data(times,caps)
                 ax.relim()
                 ax.autoscale_view()

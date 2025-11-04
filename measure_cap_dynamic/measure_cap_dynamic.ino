@@ -171,26 +171,11 @@ void setup(){
 }
 
 void loop() {
-  //check if the user typed something 
-  if (Serial.available() > 0){
-    char input = Serial.read(); //read one character
-    if (input == 'q'|| input == 'Q'){
-      Serial.println("Exiting loop...");
-      while(true){
-        if (Serial.available() > 0){
-          char input = Serial.read(); //read one character
-          if (input == 'r'|| input == 'R'){
-            Serial.println("Entering loop...");
-            break;
-          }
-        }
-      }
-      //stop running until another input is entered
-    }
-  }
   //check if data ready then read capacitance 
   if (dataReady()) {
     long raw = readCapacitanceRaw();
+    //here we would use linear model to convert raw to force:
+
     //number of miliseconds the program has been running for
     float timestamp = millis()/1000.0;
     //send data over serial to computer
