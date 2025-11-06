@@ -51,10 +51,13 @@ def main():
     caps = deque(maxlen=MAX_POINTS)
     fig, ax = plt.subplots()
     line, = ax.plot([],[], lw=2, label = 'Capacitance')
-    ax.set_xlabel('Time (s)')
+    ax.set_xlabel('Time (ms)')
     ax.set_ylabel('Capacitance (raw units)')
     ax.legend()
     ax.set_title("Live Capacitance vs Time")
+    # --- Keep y-axis fixed for full 24-bit range ---
+    ax.set_ylim(0, 16777215)  # 2^24 - 1
+    
 
     def update(frame):
         '''
@@ -75,7 +78,7 @@ def main():
                 times.append(t)
                 line.set_data(times,caps)
                 ax.relim()
-                ax.autoscale_view()
+                ax.autoscale_view(scaley=False)
         except ValueError as e:
             print(f"Parse error {e}") 
 
