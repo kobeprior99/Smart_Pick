@@ -180,7 +180,7 @@ void loop() {
     float timestamp = millis()/1000.0;
     //send data over serial to computer
     Serial.print(timestamp);
-    Serial.print("");
+    Serial.print(",");
     Serial.println(raw);
     //Time, 1, CAP, 103034012034
   }
