@@ -60,25 +60,29 @@ def main():
 
     def update(_):
         """Update plot live."""
-        # data format <time>,<cap>
-        line_in = ser.readline().decode(errors='ignore').strip()
+        # Drain the serial buffer quickly
+        while ser.in_waiting:
+            line_in = ser.readline().decode(errors='ignore').strip()
+
         if not line_in:
             return line_c,
 
-        parts = line_in.split(',')
-        if len(parts) == 2:
-            try:
-                t,c = map(float, parts) 
-                times.append(t)
-                caps.append(c)
-                line_c.set_data(times, caps)
-                ax.set_xlim(max(0, t - 5000), t)  # show last 5s of data
-            except ValueError:
-                pass
+        try:
+            t, c = map(float, line_in.split(','))
+        except ValueError:
+            return line_c,
+
+        # Update data
+        times.append(t)
+        caps.append(c)
+        line_c.set_data(times, caps)
+
+        # Fixed-width moving window (e.g. 5 s)
+        ax.set_xlim(max(0, t - 5000), t)
 
         return line_c,
 
-    ani = FuncAnimation(fig, update, interval=20, blit=True, cache_frame_data=False)
+    ani = FuncAnimation(fig, update, interval=100, blit=True, cache_frame_data=False)
     plt.tight_layout()
     plt.show()
     ser.close()

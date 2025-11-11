@@ -177,11 +177,18 @@ void loop() {
     //here we would use linear model to convert raw to force:
 
     //number of miliseconds the program has been running for
-    float timestamp = millis()/1000.0;
+    // float timestamp = millis()/1000.0;
     //send data over serial to computer
-    Serial.print(timestamp);
+    // Serial.print(timestamp);
+    // Serial.print(",");
+    //max min for serial plotter.
+    Serial.print("Min:");
+    Serial.print(10777215);//min
     Serial.print(",");
-    Serial.println(raw);
-    //Time, 1, CAP, 103034012034
+    Serial.print("Capacitance:");
+    Serial.print(raw);
+    Serial.print(",");
+    Serial.print("Max:");
+    Serial.println(13777215); //max
   }
 }
