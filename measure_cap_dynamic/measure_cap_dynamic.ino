@@ -179,9 +179,8 @@ void loop() {
     //number of miliseconds the program has been running for
     float timestamp = millis()/1000.0;
     //send data over serial to computer
-    Serial.print("TIME,");
     Serial.print(timestamp);
-    Serial.print(",CAP,");
+    Serial.print("");
     Serial.println(raw);
     //Time, 1, CAP, 103034012034
   }

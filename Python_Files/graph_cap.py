@@ -60,7 +60,7 @@ def main():
     line_c, = ax1.plot([], [], lw=2, label='Capacitance', color='tab:blue')
     ax1.set_ylabel('Capacitance (raw units)')
     ax1.set_xlabel('Time (ms)')
-    ax1.set_ylim(0, 16777215)  # 2^24 - 1 full-scale
+    ax1.set_ylim(10777215,13777215)  # 2^24 - 1 full-scale
     ax1.legend()
     ax1.grid(True)
 
