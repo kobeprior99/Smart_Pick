@@ -1,7 +1,9 @@
 #ifndef CDC_HPP
 #define CDC_HPP 
+
 #include <Arduino.h>
 #include <Wire.h>
+
 //---BIT HELPERS---
 #define NO_OS_BIT(x) (1U << (x))
 #define NO_OS_GENMASK(h, l) (((0xFF << (l)) & (0xFF >> (7 - (h)))))
@@ -120,5 +122,5 @@ class cdc {
 
 /* Global instance */
 static cdc cdc;
-}
+
 #endif

@@ -1,6 +1,6 @@
 /*
   ==============================================================================  
-  Project: load cell  
+  Project: load_cell  
   File:    load_cell.ino
   Authors: Kobe Prior and Sophia Mimlitz  
   Date Created:    November 11, 2025  
@@ -37,7 +37,7 @@
 
 //wire library for i2c
 #include <Wire.h>
-#include "i2c_helper.hpp"
+#include "cdc.hpp"
 
 void setup() {
   //start serial
