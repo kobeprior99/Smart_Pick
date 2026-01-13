@@ -37,7 +37,7 @@
 
 //wire library for i2c
 #include <Wire.h>
-#include "i2c_helper.h"
+#include "i2c_helper.hpp"
 
 void setup() {
   //start serial
