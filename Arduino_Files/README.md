@@ -1,8 +1,8 @@
 File organization
 
-/Archive
+/archive
+Contains legacy code and experiments developed prior to the final implementation found in the load_cell directory. Also includes experimental files
 
-Contains legacy code and experiments developed prior to the final implementation found in the load_cell directory.
 
 /load_cell
 
