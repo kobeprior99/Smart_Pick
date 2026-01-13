@@ -35,31 +35,56 @@
   ==============================================================================  
 */
 
-//wire library for i2c
+//include capacitive to digital converter header file
 #include "cdc.hpp"
+//include accelerometer header file
+#include "accel.hpp"
 
 void setup() {
   //start serial
   Serial.begin(115200);
-  //setup the ADC see i2c_helper.cpp
+
+  //setup the cdc
   cdc.Setup();
 
-  //TODO accell setup 
+  //setup accell
+  if (!accel.begin()){
+    Serial.println("Failed to initialize MPU6050");
+    while(1) delay(10);
+  } 
+  accel.begin();
 }
 
-void loop() {
-  //check if data ready then read capacitance
-  if (cdc.dataReady()) {
-    long raw = cdc.readCapacitanceRaw();
-    //TODO: Create Linear Model raw to force 
+unsigned long lastMicros = 0;
+long lastRaw = 0;  // store last capacitance value
 
-    Serial.print("Min:");
-    Serial.print(0);  //min
-    Serial.print(",");
-    Serial.print("Capacitance:");
-    Serial.print(raw);
-    Serial.print(",");
-    Serial.print("Max:");
-    Serial.println(16777215);  //max
-  }
+void loop() {
+    unsigned long currentMicros = micros();
+    
+    // check if 1.25 ms have passed (800 Hz)
+    if (currentMicros - lastMicros >= 1250) {
+        lastMicros += 1250;  // advance to next tick
+
+        // read capacitance if ready
+        if (cdc.dataReady()) {
+            lastRaw = cdc.readCapacitanceRaw();
+        }
+        // else keep lastRaw
+
+        // read accelerometer
+        float z = accel.getAccelZ();
+
+        // print everything
+        Serial.print("Min Capacitance:");
+        Serial.print(0);
+        Serial.print(",");
+        Serial.print("Capacitance:");
+        Serial.print(lastRaw);
+        Serial.print(",");
+        Serial.print("Max Capacitance:");
+        Serial.print(16777215);
+        Serial.print(",");
+        Serial.print("AccelZ:");
+        Serial.println(z);
+    }
 }

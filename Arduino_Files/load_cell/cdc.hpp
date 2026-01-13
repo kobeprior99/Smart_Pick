@@ -94,7 +94,8 @@ class cdc {
       writeRegister(AD7746_REG_EXC_SETUP, 0x03 | 0b00011000);
 
       // Apply offset DAC
-      writeRegister(AD7746_REG_CAPDACA, 0xFF);
+      //0xFF top of range
+      writeRegister(AD7746_REG_CAPDACA, 0);
     }
 
     bool dataReady() {
