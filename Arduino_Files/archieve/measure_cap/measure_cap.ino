@@ -164,8 +164,6 @@ void setup(){
   writeRegister(AD7746_REG_CFG,0b10000001);
   //enable excitation
   writeRegister(AD7746_REG_EXC_SETUP, 0x03|0b00001000);
-  //enable 90 sps  
-  writeRegister()
 }
 
 void loop() {

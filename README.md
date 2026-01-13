@@ -1,4 +1,5 @@
-# Smart_Pick
+Smart_Pick
+
 Description: 
 The code associated with Colorado School of Mines Capstone Design F25-85 "Smart Pick" Rock Cutter
 
@@ -7,6 +8,11 @@ convert it into forces that can be interpreted to measure bit wear and material 
 
 Authors: 
 Sophia Mimlitz, Kobe Prior
+
+File Organization:
+
+Arduino_Files
+Python Files
 
 To upload to esp32 from arduino IDE
     File>Preferences> 
