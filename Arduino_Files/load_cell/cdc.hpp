@@ -72,12 +72,9 @@
 #define AD7746_CAPDAC_DACEN_MSK       NO_OS_BIT(7)
 #define AD7746_CAPDAC_DACP_MSK        NO_OS_GENMASK(6, 0)
 //-- cdc class
-class cdc {
+class CDC {
   public:
-    void Setup() {
-      //start i2c
-      Wire.begin();  // SDA=21, SCL=22 default on ESP32
-                     
+    void Setup() {                     
       //reset the CDC
       Wire.beginTransmission(AD7746_ADDRESS);
       Wire.write(AD7746_RESET_CMD);
@@ -130,7 +127,6 @@ class cdc {
     }
 };
 
-/* Global instance */
-static cdc cdc;
+
 
 #endif

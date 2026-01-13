@@ -37,12 +37,24 @@
 
 //include capacitive to digital converter header file
 #include "cdc.hpp"
+// create cdc object
+CDC cdc;
 //include accelerometer header file
 #include "accel.hpp"
+// create accelerometer object
+Accel accel;
+
+#include "buffer.hpp"
+//create double bufferReady
+constexpr size_t BUFFER_LEN = 256;
+DoubleBuffer<BUFFER_LEN> dbuf;
+//store the lastRaw capacitance value
+long lastRaw = 0;
 
 void setup() {
   //start serial
   Serial.begin(115200);
+  Wire.begin();// <-- explicitly start I2C ONCE
 
   //setup the cdc
   cdc.Setup();
@@ -52,39 +64,50 @@ void setup() {
     Serial.println("Failed to initialize MPU6050");
     while(1) delay(10);
   } 
-  accel.begin();
 }
 
-unsigned long lastMicros = 0;
-long lastRaw = 0;  // store last capacitance value
-
 void loop() {
-    unsigned long currentMicros = micros();
-    
-    // check if 1.25 ms have passed (800 Hz)
-    if (currentMicros - lastMicros >= 1250) {
-        lastMicros += 1250;  // advance to next tick
-
-        // read capacitance if ready
-        if (cdc.dataReady()) {
-            lastRaw = cdc.readCapacitanceRaw();
-        }
-        // else keep lastRaw
-
-        // read accelerometer
-        float z = accel.getAccelZ();
-
-        // print everything
-        Serial.print("Min Capacitance:");
-        Serial.print(0);
-        Serial.print(",");
-        Serial.print("Capacitance:");
-        Serial.print(lastRaw);
-        Serial.print(",");
-        Serial.print("Max Capacitance:");
-        Serial.print(16777215);
-        Serial.print(",");
-        Serial.print("AccelZ:");
-        Serial.println(z);
+  static unsigned long lastMicros = 0;
+  unsigned long now=micros();
+  if (now-lastMicros >=1250){
+    lastMicros +=1250;
+    long cap = lastRaw;
+    if (cdc.dataReady()){
+      cap - cdc.readCapacitanceRaw();
+      lastRaw = cap
     }
+    float ax = accel.getAccelZ();
+    //Producer: push into active buffer
+    dbuf.push(az,cap);
+  }
+  //Consumer: send compleed buffer
+  if (dbuf.available()){
+    const auto* data =dbuf.read();
+    for (size_t i =0; i< dbuf.size(); i++){
+      Serial.print(data[i].t_us);
+      Serial.print(',');
+      Serial.print(data[i].capRaw);
+      Serial.print(',');
+      Serial.println(data[i].accelZ, 6);
+    }
+  }
+
+
+  // 800 Hz sampling
+  if ((uint32_t)(now - lastMicros) >= 1250) {
+    lastMicros += 1250;
+
+    if (cdc.dataReady()) {
+      lastRaw = cdc.readCapacitanceRaw();
+    }
+
+    float z = accel.getAccelZ();
+    storeSample(z, lastRaw);
+  }
+
+  // transmit ONLY when buffer is ready
+  if (bufferReady) {
+    bufferReady = false;
+    sendBuffer();
+  }
 }

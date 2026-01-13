@@ -11,15 +11,12 @@ public:
     Accel() {}
 
     // Initialize the MPU6050
-    bool begin(MPU6050_accelRange_t accelRange = MPU6050_RANGE_16_G,
-               MPU6050_gyroRange_t gyroRange = MPU6050_RANGE_250_DEG,
-               mpu6050_bandwidth_t filterBandwidth = MPU6050_BAND_21_HZ) {
+    bool begin() {
         if (!mpu.begin()) {
             return false;
         }
-        mpu.setAccelerometerRange(accelRange);
-        mpu.setGyroRange(gyroRange);
-        mpu.setFilterBandwidth(filterBandwidth);
+        mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+        mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
         delay(100); // small stabilization delay
         return true;
     }
@@ -34,8 +31,5 @@ public:
 private:
     Adafruit_MPU6050 mpu;
 };
-
-/* Global instance */
-static Accel accel;
 
 #endif // ACCEL_HPP
