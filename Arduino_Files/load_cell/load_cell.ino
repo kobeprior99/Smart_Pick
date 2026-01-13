@@ -46,7 +46,7 @@ Accel accel;
 
 #include "buffer.hpp"
 //create double bufferReady
-constexpr size_t BUFFER_LEN = 256;
+constexpr size_t BUFFER_LEN = 512;
 DoubleBuffer<BUFFER_LEN> dbuf;
 //store the lastRaw capacitance value
 long lastRaw = 0;
@@ -68,46 +68,29 @@ void setup() {
 
 void loop() {
   static unsigned long lastMicros = 0;
-  unsigned long now=micros();
-  if (now-lastMicros >=1250){
-    lastMicros +=1250;
+  unsigned long now = micros();
+
+  if (now - lastMicros >= 1250) {
+    lastMicros += 1250;
+
     long cap = lastRaw;
-    if (cdc.dataReady()){
-      cap - cdc.readCapacitanceRaw();
-      lastRaw = cap
+    if (cdc.dataReady()) {
+      cap = cdc.readCapacitanceRaw();
+      lastRaw = cap;
     }
-    float ax = accel.getAccelZ();
-    //Producer: push into active buffer
-    dbuf.push(az,cap);
+
+    float az = accel.getAccelZ();
+    dbuf.push(az, cap); // assumes bounds-checked
   }
-  //Consumer: send compleed buffer
-  if (dbuf.available()){
-    const auto* data =dbuf.read();
-    for (size_t i =0; i< dbuf.size(); i++){
+
+  if (dbuf.available()) {
+    const auto* data = dbuf.read();
+    for (size_t i = 0; i < dbuf.size(); i++) {
       Serial.print(data[i].t_us);
       Serial.print(',');
       Serial.print(data[i].capRaw);
       Serial.print(',');
       Serial.println(data[i].accelZ, 6);
     }
-  }
-
-
-  // 800 Hz sampling
-  if ((uint32_t)(now - lastMicros) >= 1250) {
-    lastMicros += 1250;
-
-    if (cdc.dataReady()) {
-      lastRaw = cdc.readCapacitanceRaw();
-    }
-
-    float z = accel.getAccelZ();
-    storeSample(z, lastRaw);
-  }
-
-  // transmit ONLY when buffer is ready
-  if (bufferReady) {
-    bufferReady = false;
-    sendBuffer();
   }
 }

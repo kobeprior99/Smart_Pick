@@ -23,8 +23,8 @@ public:
 
     // Get accelerometer Z-axis value
     float getAccelZ() {
-        sensors_event_t a;
-        mpu.getEvent(&a, nullptr, nullptr);
+        sensors_event_t a, g, temp;
+        mpu.getEvent(&a, &g, &temp);
         return a.acceleration.z;
     }
 
