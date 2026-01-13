@@ -75,6 +75,15 @@
 class cdc {
   public:
     void Setup() {
+      //start i2c
+      Wire.begin();  // SDA=21, SCL=22 default on ESP32
+                     
+      //reset the CDC
+      Wire.beginTransmission(AD7746_ADDRESS);
+      Wire.write(AD7746_RESET_CMD);
+      Wire.endTransmission();
+      delay(10);
+
       // Enable capacitance channel
       writeRegister(AD7746_REG_CAP_SETUP, AD7746_CAPSETUP_CAPEN_MSK);
 

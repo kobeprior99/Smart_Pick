@@ -36,23 +36,15 @@
 */
 
 //wire library for i2c
-#include <Wire.h>
 #include "cdc.hpp"
 
 void setup() {
   //start serial
   Serial.begin(115200);
-  //start i2c
-  Wire.begin();  // SDA=21, SCL=22 default on ESP32
-
-  //reset the CDC
-  Wire.beginTransmission(AD7746_ADDRESS);
-  Wire.write(AD7746_RESET_CMD);
-  Wire.endTransmission();
-  delay(10);
-
   //setup the ADC see i2c_helper.cpp
-  cdc.Setup()
+  cdc.Setup();
+
+  //TODO accell setup 
 }
 
 void loop() {
