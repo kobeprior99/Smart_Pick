@@ -1,5 +1,5 @@
-#ifndef I2C_HELPER_HPP
-#define I2C_HELPER_HPP
+#ifndef CDC_HPP
+#define CDC_HPP 
 #include <Arduino.h>
 #include <Wire.h>
 //---BIT HELPERS---
