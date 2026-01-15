@@ -18,20 +18,7 @@
     SDA CN0552 -> GPIO 21 ESP32
     SCL CN0552 -> GPIO 22 ESP32
     add 4.7kΩ pull-up resistor to SDA/SCL
-  CN0552
-    +/- 4.096 pF at maximum bulk capacitance of 17 pF
-    can be extended to 50 pF with maximum bulk capacitance of 200 pF
-    use 16.1 SPS for 50/60 Hz rejection
-    we can probably use 90 sps
 
-    Resolution down to 4aF
-    Accuracy: 4 fF
-    Common mode (not changing) capacitance up to 17 pF
-    Full-scale (changing) capactiance range +/- 4 pF
-    Update Rate 10Hz to 90 Hz, why we might need accelarometer for harmonics
-
-  //register definitions come from no os driver header file 
-  //https://github.com/analogdevicesinc/no-OS/blob/main/drivers/cdc/ad7746/ad7746.h
   ==============================================================================  
 */
 
@@ -44,17 +31,24 @@ CDC cdc;
 // create accelerometer object
 Accel accel;
 
-#include "buffer.hpp"
+#include "double_buffer.hpp"
 //create double bufferReady
 constexpr size_t BUFFER_LEN = 512;
 DoubleBuffer<BUFFER_LEN> dbuf;
 //store the lastRaw capacitance value
 long lastRaw = 0;
+struct DataPacket{
+  uint32_t timestamp_us;
+  uint32_t capacitance;
+  float accel_z;
+}__attribute__((packed));
 
 void setup() {
   //start serial
   Serial.begin(115200);
-  Wire.begin();// <-- explicitly start I2C ONCE
+  delay(1500); // Give time for any reset to complete
+  //initialize i2c transactions
+  Wire.begin();
 
   //setup the cdc
   cdc.Setup();
@@ -83,14 +77,20 @@ void loop() {
     dbuf.push(az, cap); // assumes bounds-checked
   }
 
-  if (dbuf.available()) {
+if (dbuf.available()) {
     const auto* data = dbuf.read();
+    
+    // Send entire buffer as one write
+    size_t bufferBytes = dbuf.size() * sizeof(DataPacket);
+    DataPacket packets[dbuf.size()];
+    
     for (size_t i = 0; i < dbuf.size(); i++) {
-      Serial.print(data[i].t_us);
-      Serial.print(',');
-      Serial.print(data[i].capRaw);
-      Serial.print(',');
-      Serial.println(data[i].accelZ, 6);
+      packets[i].timestamp_us = data[i].t_us;
+      packets[i].capacitance = data[i].capRaw;
+      packets[i].accel_z = data[i].accelZ;
     }
+    
+    Serial.write((uint8_t*)packets, bufferBytes);
   }
 }
+

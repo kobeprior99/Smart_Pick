@@ -1,3 +1,17 @@
+  // CN0552
+  //   +/- 4.096 pF at maximum bulk capacitance of 17 pF
+  //   can be extended to 50 pF with maximum bulk capacitance of 200 pF
+  //   use 16.1 SPS for 50/60 Hz rejection
+  //   we can probably use 90 sps
+
+  //   Resolution down to 4aF
+  //   Accuracy: 4 fF
+  //   Common mode (not changing) capacitance up to 17 pF
+  //   Full-scale (changing) capactiance range +/- 4 pF
+  //   Update Rate 10Hz to 90 Hz, why we might need accelarometer for harmonics
+
+  //register definitions come from no os driver header file 
+  //https://github.com/analogdevicesinc/no-OS/blob/main/drivers/cdc/ad7746/ad7746.h
 #ifndef CDC_HPP
 #define CDC_HPP 
 
@@ -87,7 +101,7 @@ class CDC {
       // Continuous conversion, faster sampling
       writeRegister(AD7746_REG_CFG, 0b10000001);
 
-      // Enable excitation A & B, B inverted from A
+      // Enable excitation A & B, B inverted from A for extended range
       writeRegister(AD7746_REG_EXC_SETUP, 0x03 | 0b00011000);
 
       // Apply offset DAC
