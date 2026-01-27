@@ -160,17 +160,24 @@ void setup(){
   Wire.begin(); // SDA=21, SCL=22 default on ESP32
 
   //reset the CDC
-  Wire.beginTransmission(AD7746_ADDRESS);
-  Wire.write(AD7746_RESET_CMD);
-  Wire.endTransmission();
-  delay(10);
+      //reset the CDC
+    Wire.beginTransmission(AD7746_ADDRESS);
+    Wire.write(AD7746_RESET_CMD);
+    Wire.endTransmission();
+    delay(10);
 
-  // Enable capacitance channel (mode)
-  writeRegister(AD7746_REG_CAP_SETUP, AD7746_CAPSETUP_CAPEN_MSK);
-  //enable continuous conversion and faster sampling rate
-  writeRegister(AD7746_REG_CFG,0b10000001);
-  //enable excitation
-  writeRegister(AD7746_REG_EXC_SETUP, 0x03|0b00001000);
+    // Enable capacitance channel
+    writeRegister(AD7746_REG_CAP_SETUP, AD7746_CAPSETUP_CAPEN_MSK);
+
+    // Continuous conversion, faster sampling
+    writeRegister(AD7746_REG_CFG, 0b10000001);
+
+    // Enable excitation A & B, B inverted from A for extended range
+    writeRegister(AD7746_REG_EXC_SETUP, 0x03 | 0b00011000);
+
+    // Apply offset DAC
+    //0xFF top of range
+    writeRegister(AD7746_REG_CAPDACA, 0xA0);
 
 }
 
@@ -178,6 +185,7 @@ void loop() {
   //check if data ready then read capacitance 
   if (dataReady()) {
     long raw = readCapacitanceRaw();
+    raw
     //here we would use linear model to convert raw to force:
 
     //number of miliseconds the program has been running for
@@ -187,12 +195,12 @@ void loop() {
     // Serial.print(",");
     //max min for serial plotter.
     Serial.print("Min:");
-    Serial.print(8777215);//min
+    Serial.print(4077215);//min
     Serial.print(",");
     Serial.print("Capacitance:");
-    Serial.print(raw);
+    Serial.print(raw); 
     Serial.print(",");
     Serial.print("Max:");
-    Serial.println(13777215); //max
+    Serial.println(8777215); //max
   }
 }
