@@ -4,6 +4,8 @@ File organization
 Contains legacy code and experiments developed prior to the final implementation found in the load_cell directory. Also includes experimental files
 
 
-/load_cell
+/Smart_Pick
+Holds the main Smart_Pick.ino sketch along with the supporting header files used to measure capacitance over an extended range, measure acceleration data, and log all the data to flash memory that can be read after testing.
 
-Holds the main load_cell.ino sketch along with the supporting header files used to measure capacitance over an extended range.
+/Read_Data
+File used to read data from flash memory to be stored into a csv file for later interpretation
