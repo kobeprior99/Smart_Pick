@@ -11,4 +11,19 @@
    and interpretation using Read_Data.ino.
    ================================================================
 */
+#include "config/PinConfig.hpp"
+#include "flash/FlashMemory.hpp"
+#include "accel/Accelerometer.hpp"
+#include "cdc/CDCConverter.hpp"
+#include "leds/LEDs.hpp"
+void setup(){
+  flash.begin();
+  accel.begin();
+  cdc.begin();
+  leds.begin();
+}
 
+void loop(){
+  //wait until interrupt on accelerometer to know the test has begun
+  //
+}
