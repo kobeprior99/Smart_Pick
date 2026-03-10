@@ -33,7 +33,7 @@ void checkSerialCommand(){
 
 void setup(){
   Serial.begin(115200); 
-  leds.init();//basically set all input and output pins and flash them so we know they work
+  leds.Init();//basically set all input and output pins and flash them so we know they work
               
   Serial.println("System Ready");
   Serial.println("Type R and press enter to read from chip.");

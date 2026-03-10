@@ -54,19 +54,19 @@ public:
     }
 
     void Read_Data(){
-      digitalWrite(B1_PIN, HIGH)
+      digitalWrite(B1_PIN, HIGH);
     }
 
     void End_Read_Data(){
-      digitalWrite(B1_PIN, LOW)
+      digitalWrite(B1_PIN, LOW);
     }
 
     void ThresholdA_Reached(){
-      flash(B2_PIN)
+      flash(B2_PIN);
     }  
 
     void ThresholdB_Reached(){
-      flash(B3_PIN)
+      flash(B3_PIN);
     }  
 };
   
