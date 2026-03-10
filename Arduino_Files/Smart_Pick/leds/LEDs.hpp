@@ -4,10 +4,19 @@
 
 class LEDs {
 private:
-    static const int RED_PIN = 42;
-    static const int B1_PIN  = 44;
-    static const int B2_PIN  = 43;
-    static const int B3_PIN  = 2;
+  
+// ## LEDs
+// | LED  | GPIO Pin |
+// |------|----------|
+// | Red  | IO2      |
+// | B1   | IO43     |
+// | B2   | IO44     |
+// | B3   | IO42     |
+
+    static const int RED_PIN = 2;
+    static const int B1_PIN  = 43;
+    static const int B2_PIN  = 44;
+    static const int B3_PIN  = 42;
 
     void flash(int pin, int duration = 150) {
         digitalWrite(pin, HIGH);
