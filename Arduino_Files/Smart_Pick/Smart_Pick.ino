@@ -16,14 +16,15 @@
 #include "accel/Accelerometer.hpp"
 #include "cdc/CDCConverter.hpp"
 #include "leds/LEDs.hpp"
+
+LEDs leds;//initialize an instance of the LED class
+
 void setup(){
-  flash.begin();
-  accel.begin();
-  cdc.begin();
-  leds.begin();
+  leds.init();//basically set all input and output pins and flash them so we know they work
+              
 }
 
 void loop(){
   //wait until interrupt on accelerometer to know the test has begun
-  //
+   
 }

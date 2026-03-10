@@ -31,10 +31,10 @@
 ## LEDs
 | LED  | GPIO Pin |
 |------|----------|
-| Red  | IO2      |
+| Red  | IO42     |
 | B1   | IO44     |
 | B2   | IO43     |
-| B3   | IO42     |
+| B3   | IO2      |
 
 ---
 
