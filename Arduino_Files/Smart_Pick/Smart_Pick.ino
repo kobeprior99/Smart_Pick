@@ -19,12 +19,33 @@
 
 LEDs leds;//initialize an instance of the LED class
 
+void checkSerialCommand(){
+  if (Serial.available() > 0 ){
+    char cmd = Serial.read();
+    if (cmd == 'R'||cmd == 'r'){
+      leds.Read_Data(); 
+      Serial.print("TODO: we see you requested to read")
+
+    }
+  }
+}
+
+
 void setup(){
+  Serial.begin(115200); 
   leds.init();//basically set all input and output pins and flash them so we know they work
               
+  Serial.println("System Ready");
+  Serial.println("Type R and press enter to read from chip.")
+
 }
 
 void loop(){
+  //start every loop by checking if the the user wants to read
+  checkSerialCommand(); 
+
   //wait until interrupt on accelerometer to know the test has begun
-   
+  //TODO accelerometer interrupt  
+  //TODO turn on RED LED when we start recordingk
+  
 }
