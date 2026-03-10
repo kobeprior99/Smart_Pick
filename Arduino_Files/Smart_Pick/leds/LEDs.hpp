@@ -38,13 +38,37 @@ public:
         digitalWrite(B1_PIN, LOW);
         digitalWrite(B2_PIN, LOW);
         digitalWrite(B3_PIN, LOW);
-
+        delay(1000);
         // Startup flash sequence
         flash(RED_PIN);
         flash(B1_PIN);
         flash(B2_PIN);
         flash(B3_PIN);
     }
+    void start_recording(){
+     digitalWrite(RED_PIN, HIGH); 
+    }
+
+    void end_recording(){
+     digitalWrite(RED_PIN, LOW); 
+    }
+
+    void read_data(){
+      digitalWrite(B1_PIN, HIGH)
+    }
+
+    void end_read_data(){
+      digitalWrite(B1_PIN, LOW)
+    }
+
+    void force_thresholdA_reached(){
+      flash(B2_PIN)
+    }  
+
+    void force_thresholdB_reached(){
+      flash(B3_PIN)
+    }  
 };
+  
 
 #endif
