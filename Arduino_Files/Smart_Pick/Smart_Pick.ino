@@ -24,7 +24,7 @@ void checkSerialCommand(){
     char cmd = Serial.read();
     if (cmd == 'R'||cmd == 'r'){
       leds.Read_Data(); 
-      Serial.print("TODO: we see you requested to read")
+      Serial.print("TODO: we see you requested to read");
 
     }
   }
@@ -36,7 +36,7 @@ void setup(){
   leds.init();//basically set all input and output pins and flash them so we know they work
               
   Serial.println("System Ready");
-  Serial.println("Type R and press enter to read from chip.")
+  Serial.println("Type R and press enter to read from chip.");
 
 }
 

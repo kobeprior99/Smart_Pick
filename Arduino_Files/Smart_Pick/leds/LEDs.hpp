@@ -26,7 +26,7 @@ private:
     }
 
 public:
-    void init() {
+    void Init() {
         // Configure pins as outputs
         pinMode(RED_PIN, OUTPUT);
         pinMode(B1_PIN, OUTPUT);
@@ -45,27 +45,27 @@ public:
         flash(B2_PIN);
         flash(B3_PIN);
     }
-    void start_recording(){
+    void Start_Recording(){
      digitalWrite(RED_PIN, HIGH); 
     }
 
-    void end_recording(){
+    void End_Recording(){
      digitalWrite(RED_PIN, LOW); 
     }
 
-    void read_data(){
+    void Read_Data(){
       digitalWrite(B1_PIN, HIGH)
     }
 
-    void end_read_data(){
+    void End_Read_Data(){
       digitalWrite(B1_PIN, LOW)
     }
 
-    void force_thresholdA_reached(){
+    void ThresholdA_Reached(){
       flash(B2_PIN)
     }  
 
-    void force_thresholdB_reached(){
+    void ThresholdB_Reached(){
       flash(B3_PIN)
     }  
 };
