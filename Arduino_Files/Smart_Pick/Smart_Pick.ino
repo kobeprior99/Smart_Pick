@@ -16,14 +16,16 @@
 #include "accel/Accelerometer.hpp"
 #include "cdc/CDCConverter.hpp"
 #include "leds/LEDs.hpp"
-LEDs leds;  //initialize an instance of the LED clasUSBSerial SerialUSB;
+LEDs leds;  //initialize an instance of the LED class
+
 void checkSerialCommand() {
   if (Serial.available() > 0) {
-    Serial.println("Type R and press Enter to Read");
+    //Serial.println("Type R and press Enter to Read");
     char cmd = Serial.read();
     if (cmd == 'R' || cmd == 'r') {
       leds.Read_Data();
       Serial.print("TODO: we see you requested to read");
+      //replace serial print above with the task of reading things to from memory
       delay(2000);
       leds.End_Read_Data();
     }
@@ -39,7 +41,7 @@ void setup() {
 
 void loop() {
   //start every loop by checking if the the user wants to read
-  // checkSerialCommand();
+  checkSerialCommand();
 
   //wait until interrupt on accelerometer to know the test has begun
   //TODO accelerometer interrupt
