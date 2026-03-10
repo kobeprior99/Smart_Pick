@@ -20,7 +20,7 @@ private:
 
     void flash(int pin, int duration = 150) {
         digitalWrite(pin, HIGH);
-        delay(duration);
+        delay(4*duration);
         digitalWrite(pin, LOW);
         delay(duration);
     }

@@ -16,36 +16,32 @@
 #include "accel/Accelerometer.hpp"
 #include "cdc/CDCConverter.hpp"
 #include "leds/LEDs.hpp"
-
-LEDs leds;//initialize an instance of the LED class
-
-void checkSerialCommand(){
-  if (Serial.available() > 0 ){
+LEDs leds;  //initialize an instance of the LED clasUSBSerial SerialUSB;
+void checkSerialCommand() {
+  if (Serial.available() > 0) {
+    Serial.println("Type R and press Enter to Read");
     char cmd = Serial.read();
-    if (cmd == 'R'||cmd == 'r'){
-      leds.Read_Data(); 
+    if (cmd == 'R' || cmd == 'r') {
+      leds.Read_Data();
       Serial.print("TODO: we see you requested to read");
-
+      delay(2000);
+      leds.End_Read_Data();
     }
   }
 }
 
 
-void setup(){
-  Serial.begin(115200); 
-  leds.Init();//basically set all input and output pins and flash them so we know they work
-              
-  Serial.println("System Ready");
-  Serial.println("Type R and press enter to read from chip.");
-
+void setup() {
+  //USB serial instead of normal (make sure tools > USB CDC on boot)
+  Serial.begin(115200);
+  leds.Init();  //basically set all input and output pins and flash them so we know they work
 }
 
-void loop(){
+void loop() {
   //start every loop by checking if the the user wants to read
-  checkSerialCommand(); 
+  // checkSerialCommand();
 
   //wait until interrupt on accelerometer to know the test has begun
-  //TODO accelerometer interrupt  
+  //TODO accelerometer interrupt
   //TODO turn on RED LED when we start recordingk
-  
 }
