@@ -6,6 +6,7 @@
 
   //   Resolution down to 4aF
   //   Accuracy: 4 fF
+  //   For extendced range the accuracy becomes closer to 40-50 fF
   //   Common mode (not changing) capacitance up to 17 pF
   //   Full-scale (changing) capactiance range +/- 4 pF
   //   Update Rate 10Hz to 90 Hz, why we might need accelarometer for harmonics
@@ -88,11 +89,12 @@
 //-- cdc class
 class CDC {
   public:
+    CDC(TwoWire &wire) : _wire(wire){}
     void Setup() {                     
       //reset the CDC
-      Wire.beginTransmission(AD7746_ADDRESS);
-      Wire.write(AD7746_RESET_CMD);
-      Wire.endTransmission();
+      _wire.beginTransmission(AD7746_ADDRESS);
+      _wire.write(AD7746_RESET_CMD);
+      _wire.endTransmission();
       delay(10);
 
       // Enable capacitance channel
@@ -125,19 +127,20 @@ class CDC {
     }
 
   private:
+    TwoWire &_wire;
     void writeRegister(uint8_t reg, uint8_t value) {
-      Wire.beginTransmission(AD7746_ADDRESS);
-      Wire.write(reg);
-      Wire.write(value);
-      Wire.endTransmission();
+      _wire.beginTransmission(AD7746_ADDRESS);
+      _wire.write(reg);
+      _wire.write(value);
+      _wire.endTransmission();
     }
 
     uint8_t readRegister(uint8_t reg) {
-      Wire.beginTransmission(AD7746_ADDRESS);
-      Wire.write(reg);
-      Wire.endTransmission(false);  // repeated start
-      Wire.requestFrom(AD7746_ADDRESS, (uint8_t)1);
-      return Wire.read();
+      _wire.beginTransmission(AD7746_ADDRESS);
+      _wire.write(reg);
+      _wire.endTransmission(false);  // repeated start
+      _wire.requestFrom(AD7746_ADDRESS, (uint8_t)1);
+      return _wire.read();
     }
 };
 

@@ -16,8 +16,12 @@
 #include "accel/Accelerometer.hpp"
 #include "cdc/CDCConverter.hpp"
 #include "leds/LEDs.hpp"
-LEDs leds;  //initialize an instance of the LED class
-
+#include <Wire.h>
+TwoWire I2C_CDC = TwoWire(0); //bus for CDC
+TwoWire I2C_ACC = TwoWire(1); //bus for accelerometer
+                              //
+LEDs leds;  //create a LED object 
+CDC cdc(I2C_CDC); //create a cdc object passing in the respective TwoWire object 
 void checkSerialCommand() {
   if (Serial.available() > 0) {
     //Serial.println("Type R and press Enter to Read");
@@ -34,8 +38,13 @@ void checkSerialCommand() {
 
 
 void setup() {
+  //basically set all input and output pins and flash them so we know they work
+  leds.Init();
   //USB serial instead of normal (make sure tools > USB CDC on boot)
   Serial.begin(115200);
+  I2C_CDC.begin(11, 10, 400000);  // SDA, SCL, baud
+  I2C_ACC.begin(41, 40, 400000);    // 400kHz baud necesary to get high required samp rate.  
+      
   leds.Init();  //basically set all input and output pins and flash them so we know they work
 }
 
