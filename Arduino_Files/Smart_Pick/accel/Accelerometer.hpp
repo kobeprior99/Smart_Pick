@@ -28,13 +28,6 @@
 
 // Pins
 #define ACC_INT1_PIN 36
-
-struct AccelData {
-    float x;
-    float y;
-    float z;
-};
-
 class ACC {
 public:
 
@@ -71,7 +64,7 @@ public:
         return false;
     }
 
-    AccelData readAccel() {
+    int16_t readAccelMagnitude() {
 
         uint8_t buffer[6];
 
@@ -81,22 +74,16 @@ public:
 
         _wire.requestFrom(ADXL375_ADDR, 6);
 
-        for (int i = 0; i < 6; i++) {
+        for(int i=0;i<6;i++)
             buffer[i] = _wire.read();
-        }
 
-        int16_t x = buffer[1] << 8 | buffer[0];
-        int16_t y = buffer[3] << 8 | buffer[2];
-        int16_t z = buffer[5] << 8 | buffer[4];
+        int16_t x = (buffer[1] << 8) | buffer[0];
+        int16_t y = (buffer[3] << 8) | buffer[2];
+        int16_t z = (buffer[5] << 8) | buffer[4];
 
-        AccelData data;
+        int32_t mag = sqrt((int32_t)x*x + (int32_t)y*y + (int32_t)z*z);
 
-        // ~49 mg/LSB for ADXL375
-        data.x = x * 0.049;
-        data.y = y * 0.049;
-        data.z = z * 0.049;
-
-        return data;
+        return (int16_t)mag;
     }
 
 private:

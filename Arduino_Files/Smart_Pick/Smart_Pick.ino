@@ -22,6 +22,8 @@ TwoWire I2C_ACC = TwoWire(1); //bus for accelerometer
                               //
 LEDs leds;  //create a LED object 
 CDC cdc(I2C_CDC); //create a cdc object passing in the respective TwoWire object 
+ACC acc(I2C_ACC)
+bool recording = false;
 void checkSerialCommand() {
   if (Serial.available() > 0) {
     //Serial.println("Type R and press Enter to Read");
@@ -32,6 +34,13 @@ void checkSerialCommand() {
       //replace serial print above with the task of reading things to from memory
       delay(2000);
       leds.End_Read_Data();
+    }
+
+    if (cmd == 'E' || cmd == 'e') {
+      leds.Read_Data(); //flash the same led twice
+      Serial.print("TODO: add code to erase the flash data");
+      leds.End_Read_Data();
+      delay(2000);
     }
   }
 }
@@ -44,15 +53,22 @@ void setup() {
   Serial.begin(115200);
   I2C_CDC.begin(11, 10, 400000);  // SDA, SCL, baud
   I2C_ACC.begin(41, 40, 400000);    // 400kHz baud necesary to get high required samp rate.  
-      
-  leds.Init();  //basically set all input and output pins and flash them so we know they work
+  cdc.Setup();
+  acc.Setup();
 }
 
 void loop() {
   //start every loop by checking if the the user wants to read
   checkSerialCommand();
-
+   
   //wait until interrupt on accelerometer to know the test has begun
-  //TODO accelerometer interrupt
-  //TODO turn on RED LED when we start recordingk
+  if(!recording && acc.Interrupt1()){
+    recording = true;
+    leds.Start_Recording();
+  }
+
+  if(recording){
+    //we're okay to start collecting data here
+    
+  }
 }
