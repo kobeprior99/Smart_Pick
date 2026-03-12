@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CDC_HPP
+#define CDC_HPP 
+
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -8,13 +10,18 @@ struct AccelData {
     float z;
 };
 
-class Accelerometer {
+class ACC {
 public:
-    void begin();
-    void poll();
-    AccelData getData();
-
+  (TwoWire &wire) : _wire(wire){}
+  void Setup(){
+    //setup code here
+  }
+  bool Interrupt(){
+    //wait for interrupt pin to go high
+  }
 private:
     AccelData currentData;
     void readRaw();
 };
+
+#endif
