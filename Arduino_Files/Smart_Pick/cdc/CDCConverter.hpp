@@ -116,14 +116,14 @@ class CDC {
       return status & AD7746_STATUS_RDYCAP_MSK;
     }
 
-    long readCapacitanceRaw() {
+    uint32_t readCapacitanceRaw() {
       uint32_t value = 0;
 
       value |= ((uint32_t)readRegister(AD7746_REG_CAP_DATA_HIGH)) << 16;
       value |= ((uint32_t)readRegister(AD7746_REG_CAP_DATA_MID)) << 8;
       value |= ((uint32_t)readRegister(AD7746_REG_CAP_DATA_LOW));
 
-      return (long)value;
+      return value;
     }
 
   private:

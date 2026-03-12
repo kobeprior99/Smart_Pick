@@ -64,7 +64,7 @@ public:
         return false;
     }
 
-    int16_t readAccelMagnitude() {
+    uint32_t readAccelMagnitude() {
 
         uint8_t buffer[6];
 
@@ -81,9 +81,9 @@ public:
         int16_t y = (buffer[3] << 8) | buffer[2];
         int16_t z = (buffer[5] << 8) | buffer[4];
 
-        int32_t mag = sqrt((int32_t)x*x + (int32_t)y*y + (int32_t)z*z);
+        uint32_t mag = sqrt((int32_t)x*x + (int32_t)y*y + (int32_t)z*z);
 
-        return (int16_t)mag;
+        return mag;//raw LSB needs to be converted with 49 mg/LSB in post
     }
 
 private:
