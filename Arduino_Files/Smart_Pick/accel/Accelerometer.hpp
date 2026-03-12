@@ -48,18 +48,18 @@ public:
       writeRegister(REG_DATA_FORMAT, 0x0B);   // full resolution
       // Shock threshold
       writeRegister(REG_SHX_THRSH, 40);     // adjust sensitivity 2.5 g
-      // Shock duration
-      writeRegister(REG_SHX_DUR, 20);
-      // Route to INT1 a setting of 0 causes interrupts to be sent to interrupt pin 1
-      writeRegister(0x2F, 0x00);
+      // Shock duration 625us per LSB
+      writeRegister(REG_SHX_DUR, 0x01);
+      // Route to INT1 to pin Int pin  1
+      writeRegister(REG_INT_MAP, 0x00);
       // Enable single shock interrupt
       writeRegister(REG_INT_ENABLE, 0b01000000);
-      // Enable measurement mode
-      writeRegister(0x2D, 0x08);
+      // Enable measurement mode 00001000
+      writeRegister(REG_POWER_CTL, 0x08);
     }
 
     bool Interrupt1() {
-
+        //if this pin goes high we know shock interrupt happened
         if (digitalRead(ACC_INT1_PIN)) {
 
             // clear interrupt by reading source register
