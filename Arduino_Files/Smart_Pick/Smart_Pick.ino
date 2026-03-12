@@ -16,6 +16,7 @@
 #include "accel/Accelerometer.hpp"
 #include "cdc/CDCConverter.hpp"
 #include "leds/LEDs.hpp"
+#include "utils/DataTypes.hpp"
 #include <Wire.h>
 TwoWire I2C_CDC = TwoWire(0); //bus for CDC
 TwoWire I2C_ACC = TwoWire(1); //bus for accelerometer
@@ -23,6 +24,7 @@ TwoWire I2C_ACC = TwoWire(1); //bus for accelerometer
 LEDs leds;  //create a LED object 
 CDC cdc(I2C_CDC); //create a cdc object passing in the respective TwoWire object 
 ACC acc(I2C_ACC)
+uint32_t currentCapacitance= 0;
 bool recording = false;
 void checkSerialCommand() {
   if (Serial.available() > 0) {
@@ -69,6 +71,15 @@ void loop() {
 
   if(recording){
     //we're okay to start collecting data here
+    //we will do a "zero order hold on capacitance so it doesn't bog down the sample rate"
+    if(cdc.dataReady()){
+      currentCapacitance = cdc.readCapacitanceRaw();
+    }
+    SensorPacket pkt;
+    pkt.timestamp = micros() - startTime;
+    pkt.capacitance = currentCapacitance;
+    pkt.acceleration = acc.read();
     
+    //TODO log the packet 
   }
 }
