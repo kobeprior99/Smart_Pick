@@ -16,10 +16,18 @@
 
 // SPI pins
 // CHANGE THESE VALUES!!
-#define FLASH_PIN_CS   5
-#define FLASH_PIN_MOSI 23
-#define FLASH_PIN_MISO 19
-#define FLASH_PIN_SCK  18
+// 
+// ## Flash Memory (SPI Interface)
+// | Signal | GPIO Pin |
+// |--------|----------|
+// | SCK    | IO47     |
+// | MOSI   | IO48     |
+// | MISO   | IO13     |
+// | CS     | IO14     |
+#define FLASH_PIN_CS   14
+#define FLASH_PIN_MOSI 48
+#define FLASH_PIN_MISO 13
+#define FLASH_PIN_SCK  47 
 
 // Flash geometry
 #define FLASH_PAGE_SIZE    256
@@ -36,7 +44,6 @@
 #define FLASH_SR1_WIP    0x01
 
 // PACKET FORMAT
-
 struct __attribute__((packed)) FlashPacket {
     uint32_t timestamp;
     uint32_t mag_accel;

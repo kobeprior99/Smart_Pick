@@ -12,7 +12,7 @@
    ================================================================
 */
 #include "config/PinConfig.hpp"
-#include "flash/FlashMemory.hpp"
+#include "flash/flash.hpp"
 #include "accel/Accelerometer.hpp"
 #include "cdc/CDCConverter.hpp"
 #include "leds/LEDs.hpp"
@@ -40,7 +40,13 @@ void checkSerialCommand() {
 
     if (cmd == 'E' || cmd == 'e') {
       leds.Read_Data(); //flash the same led twice
-      Serial.print("TODO: add code to erase the flash data");
+      Serial.print("TODO: add code to end the flash data");
+      leds.End_Read_Data();
+      delay(2000);
+    }
+    if (cmd == 'D' || cmd == 'd') {
+      leds.Read_Data(); //flash the same led twice
+      Serial.print("TODO: add code to delete the flash data");
       leds.End_Read_Data();
       delay(2000);
     }
