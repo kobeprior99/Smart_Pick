@@ -15,8 +15,6 @@
 // USER CONFIGURATION
 
 // SPI pins
-// CHANGE THESE VALUES!!
-// 
 // ## Flash Memory (SPI Interface)
 // | Signal | GPIO Pin |
 // |--------|----------|

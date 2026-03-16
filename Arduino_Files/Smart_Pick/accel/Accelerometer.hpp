@@ -41,12 +41,13 @@ public:
       // Data format
       writeRegister(REG_DATA_FORMAT, 0x0B);   // full resolution
       // Shock threshold
-      writeRegister(REG_SHX_THRSH, 40);     // adjust sensitivity 2.5 g
+      // 780mg per lsb
+      writeRegister(REG_SHX_THRSH, 0x04); // adjust sensitivity 2.5 g
       // Shock duration 625us per LSB
       writeRegister(REG_SHX_DUR, 0x01);
       // Route to INT1 to shock interrupt INT2 to data ready
       writeRegister(REG_INT_MAP, 0b10000000);
-      // Enable single shock interrupt
+      // Enable single shock and data ready interrupt
       writeRegister(REG_INT_ENABLE, 0b11000000);
       // Enable measurement mode 00001000
       writeRegister(REG_POWER_CTL, 0x08);
@@ -71,6 +72,7 @@ public:
       }
       return false;
     }
+
 
 
     uint32_t readAccelMagnitude() {
