@@ -109,7 +109,7 @@ void IRAM_ATTR onShockISR() {
  */
 void IRAM_ATTR onDataReadyISR() {
     if (!recording) return;
-
+    if(digitalRead(ACC_INT2_PIN) == LOW) return;
     uint32_t ts = micros();
     BaseType_t higherPriorityWoken = pdFALSE;
     xQueueSendFromISR(accQueue, &ts, &higherPriorityWoken);
@@ -312,11 +312,12 @@ void setup() {
         Serial.println("ERROR: FreeRTOS object creation failed");
         while (true) { leds.ThresholdA_Reached(); delay(500); }
     }
-
+    //clear interrupts before attach interrupt
+    acc.readAccelMagnitude();
     // Hardware interrupts — attach after queue exists so ISR never fires
     // into a null handle
     attachInterrupt(digitalPinToInterrupt(ACC_INT1_PIN), onShockISR,    RISING);
-    attachInterrupt(digitalPinToInterrupt(ACC_INT2_PIN), onDataReadyISR, RISING);
+    attachInterrupt(digitalPinToInterrupt(ACC_INT2_PIN), onDataReadyISR, CHANGE);
 
     // ── FreeRTOS tasks ──────────────────────────────────────────────────────
     // xTaskCreatePinnedToCore(function, name, stack bytes, param, priority, handle, core)

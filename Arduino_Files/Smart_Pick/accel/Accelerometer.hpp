@@ -62,6 +62,18 @@ public:
       writeRegister(0x38, 0x00);  // FIFO_CTL — bypass mode, no FIFO
       // Enable measurement mode 00001000
       writeRegister(REG_POWER_CTL, 0x08);
+      //clear any interrupts
+      readRegister(REG_INT_SOURCE);
+      //read until it's cleared
+      uint32_t timeout = millis();
+      while (digitalRead(REG_INT_SOURCE)){
+          readAccelMagnitude();
+          delay(5);
+          if(millis()-timeout > 1000){
+            //stuck high
+            return false;
+            }
+          }
       return true;
     }
     void debugPrint() {
@@ -95,7 +107,11 @@ public:
         Serial.print(" MAG:"); Serial.print(mag);
         Serial.print(" THR:"); Serial.println(readRegister(REG_SHX_THRSH));
     }
-
+    void clearInterrupts() {
+        // Reading INT_SOURCE clears all latched interrupts and
+        // allows the pins to return low until the next event
+        readRegister(REG_INT_SOURCE);
+    }
     uint32_t readAccelMagnitude() {
 
         uint8_t buffer[6];
