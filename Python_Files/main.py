@@ -20,6 +20,7 @@ erase_dialog = None
 read_dialog = None
 
 filename_input = None
+
 SELECTED_COM_PORT = 'SELECT SMART_PICK PORT' #global variable to store com selection
 async def set_com_port(port:str):
     global SELECTED_COM_PORT,ser
@@ -35,13 +36,19 @@ async def set_com_port(port:str):
         print(f'Failed to open serial port: {e}')
 
 
+def serial_ready():
+    return ser is not None and ser.is_open
+    
 def handle_stop():
-    if SELECTED_COM_PORT == "SELECT SMART_PICK PORT":
-        ui.notify('Must select port first', type='negative')
+    if not serial_ready():
+        ui.notify('Serial not connected', type='negative')
         return
 
-    ser.write(b'E')
-    ui.notify('Stop command sent', type='negative')
+    try:
+        ser.write(b'E')
+        ui.notify('Stop command sent', type='negative')
+    except Exception as e:
+        ui.notify(f'Serial error: {e}', type='negative')
         
 
 def handle_read():
@@ -50,20 +57,24 @@ def handle_read():
     else:
         read_dialog.open()
 
-async def download_csv():
+def download_csv():
+
+    if ser is None or not ser.is_open:
+        ui.notify("Serial not connected", type="negative")
+        return
+
     filename = filename_input.value
 
     if filename == "":
-        ui.notify("Enter a file name", type="negative")
+        ui.notify("Enter a filename", type="negative")
         return
 
-    path = f"data/{filename}.csv"
+    path = f"{filename}.csv"
 
     ui.notify("Reading data from device...", type="info")
 
+    ser.reset_input_buffer()
     ser.write(b'R')
-
-    await asyncio.sleep(0.5)
 
     with open(path, "w") as f:
         while True:
@@ -77,14 +88,25 @@ async def download_csv():
     ui.notify(f"Saved CSV: {path}", type="positive")
     read_dialog.close()
 
+
 def handle_erase():
     if (SELECTED_COM_PORT == "SELECT SMART_PICK PORT"):
         ui.notify('Must select port first', type= 'negative')
     else:
         erase_dialog.open()
+
 def confirm_erase():
-    ser.write(b'D')
-    ui.notify("erase command sent", type = 'warning');
+
+    if not serial_ready():
+        ui.notify('Serial not connected', type='negative')
+        return
+
+    try:
+        ser.write(b'D')
+        ui.notify('Erase command sent', type='warning')
+    except Exception as e:
+        ui.notify(f'Serial error: {e}', type='negative')
+
     erase_dialog.close()
 
 # main page
@@ -115,9 +137,7 @@ def main_page():
 
         with ui.row():
             ui.button("Cancel", on_click=read_dialog.close)
-            ui.button("Download", on_click=lambda: asyncio.create_task(download_csv()))
-
-
+            ui.button('Download', on_click= download_csv)
 
     ports = serial.tools.list_ports.comports()
     portsList = {p.device:f'{p.device} - {p.description}'for p in ports} 

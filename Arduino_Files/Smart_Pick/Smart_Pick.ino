@@ -157,12 +157,16 @@ void packerTask(void* pvParameters) {
     for (;;) {
         if (xQueueReceive(accQueue, &sampleTs, portMAX_DELAY) != pdTRUE) continue;
         //You have to read no matter what, these will be lost but it's necessary to clear interrupt
-        uint32_t mag = acc.readAccelMagnitude();
-        uint32_t cap = zohCapacitance.load();
+
 
         //only log if we are actually recording:
-        if (!recording) continue;//filter here instead of isr
+        if (!recording){
+            acc.readAccelMagnitude();
 
+            continue;
+        } //filter here instead of isr
+        uint32_t mag = acc.readAccelMagnitude();
+        uint32_t cap = zohCapacitance.load();
         FlashPacket pkt;
         pkt.timestamp   = sampleTs - startTime;
         pkt.mag_accel   = mag;
@@ -228,9 +232,12 @@ void checkSerialCommand() {
         Serial.println("timestamp_us,acceleration,capacitance");
 
         FlashPacket fp;
+        // Serial.print("Packet size: ");//prints 12 (bytes)as expected
+        // Serial.println(flashLogger.getPacketSize());
+        uint32_t packetSize = flashLogger.getPacketSize();
         for (uint32_t addr = LOG_BASE_ADDR;
              addr < LOG_BASE_ADDR + totalBytes;
-             addr += sizeof(FlashPacket)) {
+             addr += packetSize) {
             flashLogger.read(addr, (uint8_t*)&fp, sizeof(FlashPacket));
             Serial.print(fp.timestamp);
             Serial.print(",");
@@ -320,9 +327,14 @@ void setup() {
     acc.readAccelMagnitude();
     // Hardware interrupts — attach after queue exists so ISR never fires
     // into a null handle
+    // Serial.print("INT2 before attachInterrupt: ");
+    // Serial.println(digitalRead(ACC_INT2_PIN));
+
     attachInterrupt(digitalPinToInterrupt(ACC_INT1_PIN), onShockISR,    RISING);
     attachInterrupt(digitalPinToInterrupt(ACC_INT2_PIN), onDataReadyISR, RISING);
 
+    // Serial.print("INT2 before attachInterrupt: ");
+    // Serial.println(digitalRead(ACC_INT2_PIN));
     // ── FreeRTOS tasks ──────────────────────────────────────────────────────
     // xTaskCreatePinnedToCore(function, name, stack bytes, param, priority, handle, core)
     //
@@ -352,7 +364,7 @@ void loop() {
             acc.readAccelMagnitude();//read until the interrupt gets cleared
         }
     }
-    // Temporary: print live accel to find shock threshold
+    //Temporary: print live accel to find shock threshold
     // static uint32_t lastPrint = 0;
     // if (millis() - lastPrint > 200) {
     //     acc.debugAccel();

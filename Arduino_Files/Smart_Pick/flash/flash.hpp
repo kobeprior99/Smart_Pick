@@ -48,7 +48,6 @@ struct __attribute__((packed)) FlashPacket {
     uint32_t capacitance;
 };
 // Total = 12 bytes = 4 + 4 + 4
-
 // FLASH LOGGER CLASS
 
 template <size_t PACKETS_PER_BUFFER>
