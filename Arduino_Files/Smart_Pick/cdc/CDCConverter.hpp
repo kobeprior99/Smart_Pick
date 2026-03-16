@@ -90,7 +90,13 @@
 class CDC {
   public:
     CDC(TwoWire &wire) : _wire(wire){}
-    void Setup() {                     
+    bool Setup() {                     
+    // Test I2C comms first — attempt transmission and check for ACK
+    _wire.beginTransmission(AD7746_ADDRESS);
+    uint8_t err = _wire.endTransmission();
+    if (err != 0) {
+        return false;  // no ACK — device not found
+    }
       //reset the CDC
       _wire.beginTransmission(AD7746_ADDRESS);
       _wire.write(AD7746_RESET_CMD);
@@ -109,6 +115,7 @@ class CDC {
       // Apply offset DAC
       //0xFF top of range
       writeRegister(AD7746_REG_CAPDACA, 0);
+      return true;
     }
 
     bool dataReady() {

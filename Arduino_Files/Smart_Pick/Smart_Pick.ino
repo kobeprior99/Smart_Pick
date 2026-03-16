@@ -58,6 +58,7 @@ flash<64> flashLogger;
 // Set true by the shock ISR, read by packerTask and loop().
 // volatile ensures the compiler never caches this in a register.
 static volatile bool recording = false;
+static volatile bool recording_for_led = false;
 
 // Timestamp of the shock event, captured in the ISR.
 // Used to compute relative timestamps in every packet.
@@ -93,6 +94,7 @@ static SemaphoreHandle_t flashMutex = nullptr;
 void IRAM_ATTR onShockISR() {
     if (!recording) {
         recording  = true;
+        recording_for_led = true;
         startTime  = micros();
     }
 }
@@ -282,8 +284,18 @@ void setup() {
     I2C_ACC.begin(41, 40, 400000);   // SDA=41, SCL=40, 400 kHz
 
     // Peripheral setup
-    cdc.Setup();
-    acc.Setup();
+    if(!cdc.Setup()){
+        Serial.println("Error: cdc not found check i2c wiring");
+    }else{
+        Serial.println("cdc is chillin");
+    }
+    if(!acc.Setup()){
+      Serial.println("Error: adxl375 not found check i2c wiring");
+    }else{
+      Serial.println("adxl375 ok");
+    }
+    //acc.debugPrint();
+    
 
     // Flash setup — begin() initialises SPI and verifies the JEDEC ID
     if (!flashLogger.begin()) {
@@ -326,5 +338,27 @@ void setup() {
  */
 void loop() {
     checkSerialCommand();
+    if (recording_for_led) {
+        leds.Start_Recording();
+        Serial.println("Shock detected — recording started.");
+        recording_for_led = false;
+    }
+    // Temporary: print live accel to find shock threshold
+    // static uint32_t lastPrint = 0;
+    // if (millis() - lastPrint > 200) {
+    //     acc.debugAccel();
+    //     lastPrint = millis();
+    // }
+        //'Temporary diagnostics
+    static uint32_t lastPrint = 0;
+    if (millis() - lastPrint > 500) {
+        Serial.print("recording: ");     Serial.println(recording);
+        Serial.print("queue depth: ");   Serial.println(uxQueueMessagesWaiting(accQueue));
+        Serial.print("packets logged: ");Serial.println(flashLogger.getPacketsLogged());
+        Serial.print("INT2 pin: ");      Serial.println(digitalRead(ACC_INT2_PIN));
+        lastPrint = millis();
+    }
+
+
     vTaskDelay(pdMS_TO_TICKS(10));
 }
