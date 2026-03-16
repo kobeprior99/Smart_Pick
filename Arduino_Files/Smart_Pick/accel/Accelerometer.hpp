@@ -52,7 +52,7 @@ public:
       writeRegister(REG_DATA_FORMAT, 0x0B);   // full resolution
       //enable activity on xyz axes 
       writeRegister(REG_ACT_INACT_CTL, 0b01110000);
-      // 780mg per lsb
+      // 780 mg per lsb
       writeRegister(REG_ACT_THRSH, 0x07); // adjust sensitivity activity must go above and below the threshold 6 LSBs because I recorded 30 ish baseline from steady state
                                           
       // Route to INT1 to activity interrupt INT2 to data ready
@@ -64,18 +64,10 @@ public:
       writeRegister(REG_POWER_CTL, 0x08);
       //clear any interrupts
       readRegister(REG_INT_SOURCE);
-      //read until it's cleared
-      uint32_t timeout = millis();
-      while (digitalRead(REG_INT_SOURCE)){
-          readAccelMagnitude();
-          delay(5);
-          if(millis()-timeout > 1000){
-            //stuck high
-            return false;
-            }
-          }
+      readAccelMagnitude();
       return true;
     }
+
     void debugPrint() {
         Serial.println("--- ADXL375 Register Readback ---");
         Serial.print("DEVID       (0x00): 0x"); Serial.println(readRegister(0x00), HEX);

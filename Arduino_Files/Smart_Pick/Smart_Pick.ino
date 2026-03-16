@@ -108,8 +108,8 @@ void IRAM_ATTR onShockISR() {
  * packerTask if it was unblocked by this send (avoids an extra tick delay).
  */
 void IRAM_ATTR onDataReadyISR() {
-    if (!recording) return;
-    if(digitalRead(ACC_INT2_PIN) == LOW) return;
+    //always push -packerTask filters on recording flag
+    //this ensures we never miss the first rising edge after recording starts
     uint32_t ts = micros();
     BaseType_t higherPriorityWoken = pdFALSE;
     xQueueSendFromISR(accQueue, &ts, &higherPriorityWoken);
@@ -156,17 +156,19 @@ void packerTask(void* pvParameters) {
 
     for (;;) {
         if (xQueueReceive(accQueue, &sampleTs, portMAX_DELAY) != pdTRUE) continue;
-        if (!recording) continue;
-
+        //You have to read no matter what, these will be lost but it's necessary to clear interrupt
         uint32_t mag = acc.readAccelMagnitude();
         uint32_t cap = zohCapacitance.load();
+
+        //only log if we are actually recording:
+        if (!recording) continue;//filter here instead of isr
 
         FlashPacket pkt;
         pkt.timestamp   = sampleTs - startTime;
         pkt.mag_accel   = mag;
         pkt.capacitance = cap;
 
-        if (xSemaphoreTake(flashMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+        if (xSemaphoreTake(flashMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             bool ok = flashLogger.appendPacket(pkt);
             xSemaphoreGive(flashMutex);
 
@@ -236,6 +238,8 @@ void checkSerialCommand() {
             Serial.print(",");
             Serial.println(fp.capacitance);
         }
+        //helpful for python file to know when to stop
+        Serial.println("EOF");
 
         recording = wasRecording;
         leds.End_Read_Data();
@@ -289,6 +293,7 @@ void setup() {
     }else{
         Serial.println("cdc is chillin");
     }
+
     if(!acc.Setup()){
       Serial.println("Error: adxl375 not found check i2c wiring");
     }else{
@@ -311,13 +316,12 @@ void setup() {
     if (!accQueue || !flashMutex) {
         Serial.println("ERROR: FreeRTOS object creation failed");
         while (true) { leds.ThresholdA_Reached(); delay(500); }
-    }
-    //clear interrupts before attach interrupt
+    } 
     acc.readAccelMagnitude();
     // Hardware interrupts — attach after queue exists so ISR never fires
     // into a null handle
     attachInterrupt(digitalPinToInterrupt(ACC_INT1_PIN), onShockISR,    RISING);
-    attachInterrupt(digitalPinToInterrupt(ACC_INT2_PIN), onDataReadyISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(ACC_INT2_PIN), onDataReadyISR, RISING);
 
     // ── FreeRTOS tasks ──────────────────────────────────────────────────────
     // xTaskCreatePinnedToCore(function, name, stack bytes, param, priority, handle, core)
@@ -343,6 +347,10 @@ void loop() {
         leds.Start_Recording();
         Serial.println("Shock detected — recording started.");
         recording_for_led = false;
+        //go ahead and perform read to clear data ready interrupt
+        while (digitalRead(ACC_INT2_PIN) == HIGH){
+            acc.readAccelMagnitude();//read until the interrupt gets cleared
+        }
     }
     // Temporary: print live accel to find shock threshold
     // static uint32_t lastPrint = 0;
@@ -351,15 +359,13 @@ void loop() {
     //     lastPrint = millis();
     // }
         //'Temporary diagnostics
-    static uint32_t lastPrint = 0;
-    if (millis() - lastPrint > 500) {
-        Serial.print("recording: ");     Serial.println(recording);
-        Serial.print("queue depth: ");   Serial.println(uxQueueMessagesWaiting(accQueue));
-        Serial.print("packets logged: ");Serial.println(flashLogger.getPacketsLogged());
-        Serial.print("INT2 pin: ");      Serial.println(digitalRead(ACC_INT2_PIN));
-        lastPrint = millis();
-    }
-
-
+    // static uint32_t lastPrint = 0;
+    // if (millis() - lastPrint > 500) {
+    //     Serial.print("recording: ");     Serial.println(recording);
+    //     Serial.print("queue depth: ");   Serial.println(uxQueueMessagesWaiting(accQueue));
+    //     Serial.print("packets logged: ");Serial.println(flashLogger.getPacketsLogged());
+    //     Serial.print("INT2 pin: ");      Serial.println(digitalRead(ACC_INT2_PIN));
+    //     lastPrint = millis();
+    // }
     vTaskDelay(pdMS_TO_TICKS(10));
 }
