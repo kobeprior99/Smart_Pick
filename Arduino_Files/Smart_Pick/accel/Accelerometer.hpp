@@ -28,6 +28,7 @@
 
 // Pins
 #define ACC_INT1_PIN 36
+#define ACC_INT2_PIN 35
 class ACC {
 public:
 
@@ -43,15 +44,15 @@ public:
       writeRegister(REG_SHX_THRSH, 40);     // adjust sensitivity 2.5 g
       // Shock duration 625us per LSB
       writeRegister(REG_SHX_DUR, 0x01);
-      // Route to INT1 to pin Int pin  1
-      writeRegister(REG_INT_MAP, 0x00);
+      // Route to INT1 to shock interrupt INT2 to data ready
+      writeRegister(REG_INT_MAP, 0b10000000);
       // Enable single shock interrupt
-      writeRegister(REG_INT_ENABLE, 0b01000000);
+      writeRegister(REG_INT_ENABLE, 0b11000000);
       // Enable measurement mode 00001000
       writeRegister(REG_POWER_CTL, 0x08);
     }
 
-    bool Interrupt1() {
+    bool Shock_Interrupt() {
         //if this pin goes high we know shock interrupt happened
         if (digitalRead(ACC_INT1_PIN)) {
 
@@ -63,6 +64,14 @@ public:
 
         return false;
     }
+    bool DR_Interrupt() {
+      //if data is ready
+      if (digitalRead(ACC_INT2_PIN)){
+        return true;
+      }
+      return false;
+    }
+
 
     uint32_t readAccelMagnitude() {
 
