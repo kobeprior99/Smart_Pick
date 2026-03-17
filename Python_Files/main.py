@@ -82,16 +82,35 @@ def handle_erase():
         erase_dialog.open()
 
 
-def confirm_erase():
+async def confirm_erase():
     if not serial_ready():
         ui.notify('Serial not connected', type='negative')
         return
     try:
         ser.write(b'D')
-        ui.notify('Erase command sent', type='warning')
+        ui.notify('Erase started — this takes approximately 2 minutes...', type='warning')
+        erase_dialog.close()
+        
+        # Read responses in background without blocking UI
+        while True:
+            await asyncio.sleep(0.1)  # yield to UI between reads
+            if ser.in_waiting > 0:
+                line = ser.readline().decode('utf-8', errors='ignore').strip()
+                if not line:
+                    continue
+                if 'Erasing' in line:
+                    ui.notify(line, type='warning')
+                elif 'KB' in line:
+                    ui.notify(line, type='info')  # progress updates
+                elif 'Flash erased' in line:
+                    ui.notify('Flash erased successfully', type='positive')
+                    break
+                elif 'ERROR' in line:
+                    ui.notify(f'Error: {line}', type='negative')
+                    break
+
     except Exception as e:
         ui.notify(f'Serial error: {e}', type='negative')
-    erase_dialog.close()
 
 
 # ── Simulate page ─────────────────────────────────────────────────────────────

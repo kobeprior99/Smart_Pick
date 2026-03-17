@@ -1,7 +1,7 @@
 /*
  * EDNS 492 - Senior Design
  * Smart Pick for Rock Mining
- * Sophia Mimlitz
+ * Sophia Mimlitz and Kobe Prior
  * 2/26/2026
  * Description: Header file for Flash Memory programming
  */
@@ -22,6 +22,8 @@
 // | MOSI   | IO48     |
 // | MISO   | IO13     |
 // | CS     | IO14     |
+
+
 #define FLASH_PIN_CS   14
 #define FLASH_PIN_MOSI 48
 #define FLASH_PIN_MISO 13
@@ -46,8 +48,9 @@ struct __attribute__((packed)) FlashPacket {
     uint32_t timestamp;
     uint32_t mag_accel;
     uint32_t capacitance;
+    uint32_t reserved; //4 more bytes just to make even 16
 };
-// Total = 12 bytes = 4 + 4 + 4
+// Total = 16 bytes = 4 + 4 + 4 +4
 // FLASH LOGGER CLASS
 
 template <size_t PACKETS_PER_BUFFER>
@@ -93,14 +96,24 @@ public:
     bool eraseLogRegion() {
         if (logSizeBytes == 0) return false;
 
+        uint32_t totalSectors = logSizeBytes / FLASH_SECTOR_SIZE;
+        uint32_t sectorNum = 0;
+
         for (uint32_t addr = logBaseAddr;
              addr < logBaseAddr + logSizeBytes;
              addr += FLASH_SECTOR_SIZE) {
             if (!eraseSector4K(addr)) return false;
+            sectorNum++;
+            // Print progress every 256 sectors (~1MB)
+            if (sectorNum % 256 == 0) {
+                Serial.print("Erased ");
+                Serial.print(sectorNum * FLASH_SECTOR_SIZE / 1024);
+                Serial.println(" KB...");
+            }
         }
 
-        writePtr = logBaseAddr;
-        return true;
+          writePtr = logBaseAddr;
+          return true;
     }
 
     // Packet Logging
@@ -216,7 +229,48 @@ public:
 
         deselect();
     }
+    bool eraseSectorForTest(){
+      return eraseSector4K(logBaseAddr);
+    }
 
+    uint32_t measureSectorEraseTime(){
+      //Erase the first sector and measure how long it takes
+      writeEnable();
+      select();
+      SPI.transfer(FLASH_CMD_SE_4K);
+      sendAddress(logBaseAddr);
+      deselect();
+      uint32_t start = micros();
+      while (readStatus1() & FLASH_SR1_WIP) {}
+      uint32_t elapsed = micros() - start;
+      return elapsed;
+    }
+
+    uint32_t measurePageWriteTime() {
+        // Write one page of dummy data at the start of the log region
+        // and measure how long it takes
+        uint8_t dummyPage[FLASH_PAGE_SIZE];
+        memset(dummyPage, 0xAB, FLASH_PAGE_SIZE);
+
+        writeEnable();
+        select();
+        SPI.transfer(FLASH_CMD_PP);
+        sendAddress(logBaseAddr);
+        for (size_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+            SPI.transfer(dummyPage[i]);
+        }
+        deselect();
+
+        uint32_t start = micros();
+        while (readStatus1() & FLASH_SR1_WIP) {}  // wait for WIP to clear
+        uint32_t elapsed = micros() - start;
+
+        Serial.print("Page write time: ");
+        Serial.print(elapsed);
+        Serial.println(" us");
+
+        return elapsed;
+    }
 private:
     // Internal State
     uint32_t writePtr;

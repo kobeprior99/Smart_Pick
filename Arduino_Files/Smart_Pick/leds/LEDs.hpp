@@ -18,9 +18,9 @@ private:
     static const int B2_PIN  = 44;
     static const int B3_PIN  = 42;
 
-    void flash(int pin, int duration = 150) {
+    void flash(int pin, int duration = 100) {
         digitalWrite(pin, HIGH);
-        delay(4*duration);
+        delay(duration);
         digitalWrite(pin, LOW);
         delay(duration);
     }
@@ -38,8 +38,11 @@ public:
         digitalWrite(B1_PIN, LOW);
         digitalWrite(B2_PIN, LOW);
         digitalWrite(B3_PIN, LOW);
-        delay(1000);
         // Startup flash sequence
+        flash(RED_PIN);
+        flash(B1_PIN);
+        flash(B2_PIN);
+        flash(B3_PIN);
         flash(RED_PIN);
         flash(B1_PIN);
         flash(B2_PIN);
