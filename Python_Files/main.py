@@ -10,7 +10,11 @@ from nicegui import ui, app
 import serial
 import serial.tools.list_ports
 import asyncio
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from config import BAUDRATE
+import io
 
 ser = None
 erase_dialog = None
@@ -114,37 +118,291 @@ async def confirm_erase():
 
 
 # ── Simulate page ─────────────────────────────────────────────────────────────
+
 @ui.page('/simulate')
 def simulate_page():
     ui.add_head_html('''
     <style>
         body, html { margin: 0; padding: 0; height: 100%; }
         .nicegui-content { height: 100vh; display: flex; flex-direction: column; padding: 0 !important; }
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            transition: border-color 0.2s, background 0.2s;
+            cursor: pointer;
+            background: #f8fafc;
+        }
+        .upload-zone:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
     </style>
     ''')
-
-    # Back button header
+ 
+    # ── state ──────────────────────────────────────────────────────────────────
+    state = {
+        'df': None,           # full dataframe
+        'window_start': 0,    # current window start index
+        'window_size': 400,   # number of samples in view (~500ms at 800Hz)
+        'playing': False,
+        'play_task': None,
+    }
+ 
+    # ── header ─────────────────────────────────────────────────────────────────
     with ui.row().style(
         'width: 100%; padding: 16px 24px; box-sizing: border-box; '
-        'align-items: center; border-bottom: 1px solid #e0e0e0;'
+        'align-items: center; border-bottom: 1px solid #e0e0e0; '
+        'background: white; flex-shrink: 0;'
     ):
         ui.button(icon='arrow_back', on_click=lambda: ui.navigate.to('/')) \
             .props('flat round')
         ui.label('Simulate Miner Experience').style(
             'font-size: 1.3rem; font-weight: 600; margin-left: 12px;'
         )
-
-    # Content area — placeholder for user to fill in
+ 
+    # ── main content ───────────────────────────────────────────────────────────
     with ui.column().style(
-        'flex: 1; width: 100%; height: calc(100vh - 73px); '
-        'display: flex; flex-direction: column; '
-        'align-items: center; justify-content: center; '
-        'gap: 16px; box-sizing: border-box;'
+        'flex: 1; width: 100%; padding: 24px; box-sizing: border-box; '
+        'gap: 20px; overflow-y: auto;'
     ):
-        ui.icon('construction').style('font-size: 4rem; color: #aaa;')
-        ui.label('TODO: IMPLEMENTATION PENDING').style(
-            'font-size: 1.4rem; color: #aaa; font-weight: 500;'
+ 
+        # ── file upload section ────────────────────────────────────────────────
+        upload_card = ui.card().style(
+            'width: 100%; padding: 24px; box-sizing: border-box;'
         )
+        with upload_card:
+            ui.label('Load CSV Data').style(
+                'font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; display: block;'
+            )
+            with ui.row().style('align-items: center; gap: 16px; flex-wrap: wrap;'):
+                file_label = ui.label('No file loaded').style(
+                    'color: #64748b; font-size: 0.9rem; flex: 1;'
+                )
+                ui.upload(
+                    label='Choose CSV file',
+                    auto_upload=True,
+                    on_upload=lambda e: handle_upload(e),
+                ).props('accept=".csv"').style('flex-shrink: 0;')
+ 
+        # ── chart area ─────────────────────────────────────────────────────────
+        chart_card = ui.card().style(
+            'width: 100%; padding: 16px; box-sizing: border-box;'
+        )
+        with chart_card:
+            accel_plot = ui.plotly({}).style('width: 100%; height: 280px;')
+            cap_plot   = ui.plotly({}).style('width: 100%; height: 280px;')
+ 
+        # ── playback controls ──────────────────────────────────────────────────
+        controls_card = ui.card().style(
+            'width: 100%; padding: 16px 24px; box-sizing: border-box;'
+        )
+        with controls_card:
+            ui.label('Playback').style(
+                'font-size: 0.9rem; font-weight: 600; '
+                'color: #64748b; margin-bottom: 12px; display: block;'
+            )
+            with ui.row().style('align-items: center; gap: 16px; flex-wrap: wrap;'):
+ 
+                btn_rewind = ui.button(icon='skip_previous', on_click=lambda: rewind()) \
+                    .props('flat round').tooltip('Rewind to start')
+ 
+                btn_play = ui.button(icon='play_arrow', on_click=lambda: toggle_play()) \
+                    .props('flat round').tooltip('Play / Pause')
+ 
+                # window position slider
+                slider = ui.slider(min=0, max=100, value=0, step=1) \
+                    .style('flex: 1; min-width: 200px;') \
+                    .on('change', lambda e: seek(e.args))
+ 
+                # window size selector
+                ui.label('Window:').style('color: #64748b; font-size: 0.85rem;')
+                ui.select(
+                    options={200: '200 samples', 400: '400 samples',
+                              800: '800 samples', 1600: '1600 samples'},
+                    value=400,
+                    on_change=lambda e: set_window_size(e.value)
+                ).style('min-width: 140px;')
+ 
+                position_label = ui.label('0 / 0 samples').style(
+                    'color: #64748b; font-size: 0.85rem; min-width: 130px;'
+                )
+ 
+        # ── stats row ──────────────────────────────────────────────────────────
+        stats_row = ui.row().style(
+            'width: 100%; gap: 12px; flex-wrap: wrap;'
+        )
+        with stats_row:
+            def stat_card(title, value_id):
+                with ui.card().style(
+                    'flex: 1; min-width: 140px; padding: 16px; '
+                    'box-sizing: border-box; text-align: center;'
+                ):
+                    ui.label(title).style(
+                        'font-size: 0.75rem; font-weight: 600; '
+                        'color: #94a3b8; text-transform: uppercase; '
+                        'letter-spacing: 0.05em; margin-bottom: 4px; display: block;'
+                    )
+                    return ui.label('—').style(
+                        f'font-size: 1.4rem; font-weight: 700; color: #1e293b;'
+                    )
+ 
+            lbl_total    = stat_card('Total Samples', 'total')
+            lbl_duration = stat_card('Duration', 'duration')
+            lbl_max_acc  = stat_card('Peak Accel (LSB)', 'peak_accel')
+            lbl_cap_range = stat_card('Cap Range', 'cap_range')
+ 
+    # ── helpers ────────────────────────────────────────────────────────────────
+ 
+    def make_accel_figure(df_window):
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=df_window['timestamp_us'] / 1_000_000,
+            y=df_window['acceleration'],
+            mode='lines',
+            name='Acceleration',
+            line=dict(color='#3b82f6', width=1.5),
+        ))
+        fig.update_layout(
+            margin=dict(l=48, r=16, t=32, b=40),
+            title=dict(text='Acceleration Magnitude (raw LSB)', font=dict(size=13)),
+            xaxis=dict(title='Time (s)', showgrid=True, gridcolor='#f1f5f9'),
+            yaxis=dict(title='LSB', showgrid=True, gridcolor='#f1f5f9'),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            showlegend=False,
+            hovermode='x unified',
+        )
+        return fig.to_dict()
+ 
+    def make_cap_figure(df_window):
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=df_window['timestamp_us'] / 1_000_000,
+            y=df_window['capacitance'],
+            mode='lines',
+            name='Capacitance',
+            line=dict(color='#10b981', width=1.5),
+            fill='tozeroy',
+            fillcolor='rgba(16,185,129,0.08)',
+        ))
+        fig.update_layout(
+            margin=dict(l=48, r=16, t=32, b=40),
+            title=dict(text='Capacitance (raw ADC counts)', font=dict(size=13)),
+            xaxis=dict(title='Time (s)', showgrid=True, gridcolor='#f1f5f9'),
+            yaxis=dict(title='ADC counts', showgrid=True, gridcolor='#f1f5f9'),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            showlegend=False,
+            hovermode='x unified',
+        )
+        return fig.to_dict()
+ 
+    def update_plots():
+        df = state['df']
+        if df is None:
+            return
+        i = state['window_start']
+        j = min(i + state['window_size'], len(df))
+        window = df.iloc[i:j]
+
+        accel_plot.figure = make_accel_figure(window)
+        accel_plot.update()
+        cap_plot.figure = make_cap_figure(window)
+        cap_plot.update()
+ 
+        # update slider and position label
+        max_start = max(0, len(df) - state['window_size'])
+        pct = int(i / max_start * 100) if max_start > 0 else 0
+        slider.value = pct
+        position_label.text = f'{i:,} / {len(df):,} samples'
+ 
+    def update_stats(df):
+        duration_s = (df['timestamp_us'].max() - df['timestamp_us'].min()) / 1_000_000
+        lbl_total.text    = f'{len(df):,}'
+        lbl_duration.text = f'{duration_s:.2f} s'
+        lbl_max_acc.text  = f'{int(df["acceleration"].max())}'
+        cap_min = df['capacitance'].min()
+        cap_max = df['capacitance'].max()
+        lbl_cap_range.text = f'{cap_max - cap_min:,}'
+ 
+    def handle_upload(e):
+        try:
+            content = e.content.read().decode('utf-8', errors='ignore')
+            # strip any trailing EOF line the ESP32 adds
+            content = '\n'.join(
+                line for line in content.splitlines()
+                if line.strip().upper() != 'EOF'
+            )
+            df = pd.read_csv(io.StringIO(content))
+            df.columns = [c.strip().lower().replace(' ', '_') for c in df.columns]
+ 
+            # sort by timestamp and drop bad rows
+            df = df.sort_values('timestamp_us').reset_index(drop=True)
+            df = df[df['timestamp_us'] > 0]
+ 
+            state['df'] = df
+            state['window_start'] = 0
+ 
+            file_label.text = f'{e.name}  —  {len(df):,} samples loaded'
+            file_label.style('color: #16a34a; font-size: 0.9rem;')
+ 
+            update_stats(df)
+            update_plots()
+            ui.notify(f'Loaded {len(df):,} samples', type='positive')
+ 
+        except Exception as ex:
+            ui.notify(f'Failed to load file: {ex}', type='negative')
+            file_label.text = f'Error: {ex}'
+            file_label.style('color: #dc2626; font-size: 0.9rem;')
+ 
+    def rewind():
+        state['playing'] = False
+        btn_play.props('icon=play_arrow')
+        state['window_start'] = 0
+        update_plots()
+ 
+    def seek(pct):
+        if state['df'] is None:
+            return
+        max_start = max(0, len(state['df']) - state['window_size'])
+        state['window_start'] = int(pct / 100 * max_start)
+        update_plots()
+ 
+    def set_window_size(size):
+        state['window_size'] = size
+        update_plots()
+ 
+    def toggle_play():
+        if state['df'] is None:
+            ui.notify('Load a CSV file first', type='warning')
+            return
+        state['playing'] = not state['playing']
+        if state['playing']:
+            btn_play.props('icon=pause')
+            asyncio.ensure_future(play_loop())
+        else:
+            btn_play.props('icon=play_arrow')
+ 
+    async def play_loop():
+        """Advance the window by 1/4 window size every 300ms — smooth scrub."""
+        step = max(1, state['window_size'] // 4)
+        while state['playing']:
+            df = state['df']
+            if df is None:
+                break
+            max_start = max(0, len(df) - state['window_size'])
+            if state['window_start'] >= max_start:
+                state['window_start'] = max_start
+                state['playing'] = False
+                btn_play.props('icon=play_arrow')
+                update_plots()
+                break
+            state['window_start'] = min(state['window_start'] + step, max_start)
+            update_plots()
+            await asyncio.sleep(0.3)
+ 
 
 
 # ── Main page ──────────────────────────────────────────────────────────────────

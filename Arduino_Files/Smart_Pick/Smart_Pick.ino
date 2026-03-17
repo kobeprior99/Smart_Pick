@@ -28,17 +28,19 @@ flash<64> flashLogger;
 volatile bool recording = false;
 volatile bool dataReady = false;
 volatile uint32_t start_time = 0;
+volatile uint32_t isrTimestamp = 0;
 uint32_t zohCapacitance = 0;
 
 void IRAM_ATTR onActivityISR() {
   if (!recording) {
-    recording = true;
     start_time = micros();
+    recording = true;
   }
 }
 
 void IRAM_ATTR onDataReadyISR() {
   dataReady = true;  //just set the flag so the loop gets the newest value
+  isrTimestamp = micros();
 }
 
 
@@ -104,6 +106,7 @@ void checkSerialCommand() {
       pkt.timestamp = i * 1000;   // 0, 1000, 2000, 3000...
       pkt.mag_accel = i * 111;    // 0, 111, 222, 333...
       pkt.capacitance = i * 999;  // 0, 999, 1998, 2997...
+      pkt.reserved = 0;
       flashLogger.appendPacket(pkt);
     }
 
@@ -170,7 +173,7 @@ void setup() {
   flashLogger.configureLogRegion(LOG_BASE_ADDR, LOG_SIZE_BYTES);
   // Serial.print("Page write time (us): ");
   // Serial.println(flashLogger.measurePageWriteTime());// 176 us fast enough to service during sample downtime
-  
+
   // Serial.print("Sector erase time(us): ");
   // Serial.println(flashLogger.measureSectorEraseTime());//32ms, kinda takes a while...
 
@@ -196,13 +199,16 @@ void loop() {
     while (digitalRead(ACC_INT2_PIN) == HIGH) {
       acc.readAccelMagnitude();
     }
+    dataReady = false;
   }
 
   if (!recording) ledSet = false;
 
   //main data collection only when data ready isr sets the flag
   if (dataReady) {
-    dataReady = false;  //clear flag
+    dataReady = false;  //clear flag so it can be set by interrupt on next data event
+    //use isr timestamp not current time
+    uint32_t sampleTs = isrTimestamp;
     //read acceleration and capacitance if available
     uint32_t mag = acc.readAccelMagnitude();
     if (cdc.dataReady()) {
@@ -210,19 +216,26 @@ void loop() {
     }
 
     if (recording) {
+      uint32_t ts = sampleTs - start_time;
       FlashPacket pkt;
-      pkt.timestamp = micros() - start_time;
-      //check if the packets are right before they are written
-      // Serial.print("timestamp: ");
-      // Serial.println(pkt.timestamp);
-      //we know for sure the time stamps are good
-      pkt.mag_accel = mag;
-      pkt.capacitance = zohCapacitance;
+      if (ts < 100 && ts < 3600000000UL) {
+        //too cose to start, start_time may not have settled
+        //skip this packet
+      } else {
+        pkt.timestamp = ts;
+        //check if the packets are right before they are written
+        // Serial.print("timestamp: ");
+        // Serial.println(pkt.timestamp);
+        //we know for sure the time stamps are good
+        pkt.mag_accel = mag;
+        pkt.capacitance = zohCapacitance;
+        pkt.reserved = 0;
 
-      if (!flashLogger.appendPacket(pkt)) {
-        Serial.println("WARNING: flash buffer overflow — stopping recording");
-        recording = false;
-        leds.End_Recording();
+        if (!flashLogger.appendPacket(pkt)) {
+          Serial.println("WARNING: flash buffer overflow — stopping recording");
+          recording = false;
+          leds.End_Recording();
+        }
       }
     }
   } else {
