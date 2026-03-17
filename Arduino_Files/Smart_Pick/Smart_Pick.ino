@@ -66,9 +66,8 @@ static volatile bool recording_for_led = false;
 static volatile uint32_t startTime = 0;
 
 // Zero-order hold: last valid capacitance reading from the CDC.
-// Written by cdcPollerTask, read by packerTask — must be atomic so
 // a half-written value is never observed on the other core.
-static std::atomic<uint32_t> zohCapacitance = 0;
+static uint32_t zohCapacitance = 0; 
 
 // Queue between the ACC data-ready ISR and packerTask.
 // The ISR pushes a single token (the raw micros() timestamp at which
@@ -117,30 +116,6 @@ void IRAM_ATTR onDataReadyISR() {
     portYIELD_FROM_ISR(higherPriorityWoken);
 }
 
-// ── Task: CDC poller (Core 1, priority 4) ────────────────────────────────────
-/*
- * Wakes every 11 ms (~90 Hz) using vTaskDelayUntil, which is drift-free —
- * it accounts for how long the task body took so the period stays accurate.
- *
- * If the CDC has a new sample, atomically store it as the ZOH value.
- * If not, do nothing — the old value stays, which is the zero-order hold.
- */
-void cdcPollerTask(void* pvParameters) {
-    TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(11);  // 11 ms ≈ 90 Hz
-
-    for (;;) {
-        vTaskDelayUntil(&lastWake, period);
-
-        if (!recording) continue;
-
-        if (cdc.dataReady()) {
-            uint32_t raw = cdc.readCapacitanceRaw();
-            zohCapacitance.store(raw);
-        }
-        // No new CDC data → ZOH holds last value automatically
-    }
-}
 
 // ── Task: packer (Core 1, priority 5 — highest on this core) ─────────────────
 /*
@@ -152,31 +127,29 @@ void cdcPollerTask(void* pvParameters) {
  * First iteration after shock: also clears the ADXL375 INT_SOURCE register
  * that the ISR could not safely read.
  */
+
 void packerTask(void* pvParameters) {
     uint32_t sampleTs = 0;
-
     for (;;) {
         if (xQueueReceive(accQueue, &sampleTs, portMAX_DELAY) != pdTRUE) continue;
-        //You have to read no matter what, these will be lost but it's necessary to clear interrupt
 
-
-        //only log if we are actually recording:
-        if (!recording){
-            acc.readAccelMagnitude();
-
+        if (!recording) {
             continue;
-        } //filter here instead of isr
-        uint32_t mag = acc.readAccelMagnitude();
-        uint32_t cap = zohCapacitance.load();
+        }
+
+        // Check CDC inline — zero-order hold if not ready
+        if (cdc.dataReady()) {
+          zohCapacitance = cdc.readCapacitanceRaw();
+        }
+
         FlashPacket pkt;
         pkt.timestamp   = sampleTs - startTime;
-        pkt.mag_accel   = mag;
-        pkt.capacitance = cap;
+        pkt.mag_accel   = acc.readAccelMagnitude();
+        pkt.capacitance = zohCapacitance;
 
         if (xSemaphoreTake(flashMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             bool ok = flashLogger.appendPacket(pkt);
             xSemaphoreGive(flashMutex);
-
             if (!ok) {
                 Serial.println("WARNING: flash buffer overflow — stopping recording");
                 recording = false;
@@ -341,7 +314,6 @@ void setup() {
     //
     // Core 1 — time-critical sensing
     xTaskCreatePinnedToCore(packerTask,     "packer",  4096, NULL, 5, NULL, 1);
-    xTaskCreatePinnedToCore(cdcPollerTask,  "cdc",     2048, NULL, 4, NULL, 1);
     // Core 0 — flash writes and serial (shares core with loop())
     xTaskCreatePinnedToCore(flashWriterTask,"flash",   2048, NULL, 3, NULL, 0);
 
