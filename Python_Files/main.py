@@ -341,7 +341,9 @@ def simulate_page():
             # sort by timestamp and drop bad rows
             df = df.sort_values('timestamp_us').reset_index(drop=True)
             df = df[df['timestamp_us'] > 0]
- 
+            #zero base the timestamps so plot starts at t=0.
+            df['timestamp_us'] = df['timestamp_us'] -df['timestamp_us'].min()
+
             state['df'] = df
             state['window_start'] = 0
  

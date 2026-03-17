@@ -218,7 +218,7 @@ void loop() {
     if (recording) {
       uint32_t ts = sampleTs - start_time;
       FlashPacket pkt;
-      if (ts < 100 && ts < 3600000000UL) {
+      if (ts < 100 || ts < 3600000000UL) {
         //too cose to start, start_time may not have settled
         //skip this packet
       } else {
