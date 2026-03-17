@@ -1,5 +1,28 @@
 //This is a test file using simple interrupts and super loop
 
+#include "flash/flash.hpp"
+#include "accel/Accelerometer.hpp"
+#include "cdc/CDCConverter.hpp"
+#include "leds/LEDs.hpp"
+
+#include <Wire.h>
+
+//objects
+
+TwoWire I2C_CDC = TwoWire(0);   // SDA=11, SCL=10
+TwoWire I2C_ACC = TwoWire(1);   // SDA=41, SCL=40
+
+// ── Peripheral objects ────────────────────────────────────────────────────────
+LEDs leds;
+CDC  cdc(I2C_CDC);
+ACC  acc(I2C_ACC);
+
+// ── Flash logger ──────────────────────────────────────────────────────────────
+// 64 packets per buffer — at 800 Hz that gives 80 ms of headroom per buffer,
+// which comfortably covers the worst-case SPI sector-erase time (~50 ms).
+flash<64> flashLogger;
+#define LOG_BASE_ADDR  0x000000
+#define LOG_SIZE_BYTES 0x1000000  // 16 MB — full 128 Mbit chip
 
 // --ISRs _________________________________
 volatile bool recording =false;
@@ -10,7 +33,7 @@ uint32_t zohCapacitance =0;
 void IRAM_ATTR onActivityISR(){
   if(!recording){
     recording = true;
-    startTime = micros();
+    start_time = micros();
   }
 }
 
@@ -21,30 +44,19 @@ void IRAM_ATTR onDataReadyISR(){
 
 //serial handler
 void checkSerialCommand() {
-    if (!Serial.available()) return;
-
     char cmd = Serial.read();
 
     // 'R' — read all logged packets back over serial as CSV
     if (cmd == 'R' || cmd == 'r') {
         leds.Read_Data();
-
-        // Pause recording while we read so packerTask doesn't keep appending
-        bool wasRecording = recording;
         recording = false;
 
-        // Finalize any partial buffer first
-        if (xSemaphoreTake(flashMutex, portMAX_DELAY) == pdTRUE) {
-            flashLogger.finalizeLog();
-            xSemaphoreGive(flashMutex);
-        }
+        flashLogger.finalizeLog();
 
         uint32_t totalBytes = flashLogger.getPacketsLogged() * flashLogger.getPacketSize();
         Serial.println("timestamp_us,acceleration,capacitance");
 
         FlashPacket fp;
-        // Serial.print("Packet size: ");//prints 12 (bytes)as expected
-        // Serial.println(flashLogger.getPacketSize());
         uint32_t packetSize = flashLogger.getPacketSize();
         for (uint32_t addr = LOG_BASE_ADDR;
              addr < LOG_BASE_ADDR + totalBytes;
@@ -56,10 +68,7 @@ void checkSerialCommand() {
             Serial.print(",");
             Serial.println(fp.capacitance);
         }
-        //helpful for python file to know when to stop
         Serial.println("EOF");
-
-        recording = wasRecording;
         leds.End_Read_Data();
     }
 
@@ -67,12 +76,7 @@ void checkSerialCommand() {
     if (cmd == 'E' || cmd == 'e') {
         recording = false;
         leds.End_Recording();
-
-        if (xSemaphoreTake(flashMutex, portMAX_DELAY) == pdTRUE) {
-            flashLogger.finalizeLog();
-            xSemaphoreGive(flashMutex);
-        }
-
+        flashLogger.finalizeLog();
         Serial.print("Recording ended. Packets logged: ");
         Serial.println(flashLogger.getPacketsLogged());
     }
@@ -81,13 +85,8 @@ void checkSerialCommand() {
     if (cmd == 'D' || cmd == 'd') {
         leds.Read_Data();
         Serial.println("Erasing flash...");
-
-        if (xSemaphoreTake(flashMutex, portMAX_DELAY) == pdTRUE) {
-            flashLogger.configureLogRegion(LOG_BASE_ADDR, LOG_SIZE_BYTES);
-            flashLogger.eraseLogRegion();
-            xSemaphoreGive(flashMutex);
-        }
-
+        flashLogger.configureLogRegion(LOG_BASE_ADDR, LOG_SIZE_BYTES);
+        flashLogger.eraseLogRegion();
         Serial.println("Flash erased.");
         leds.End_Read_Data();
     }
@@ -130,7 +129,7 @@ void loop(){
   if(recording && !ledSet){
     ledSet = true;
     leds.Start_Recording();
-    Serial.pritnln("Activity detected - recording started");
+    Serial.println("Activity detected - recording started");
     //make sure data ready interrupt pin goes low 
     while (digitalRead(ACC_INT2_PIN) == HIGH) {
       acc.readAccelMagnitude();
@@ -150,7 +149,7 @@ void loop(){
 
     if (recording){
       FlashPacket pkt;
-      pkt.timestamp = micros()-startTime;
+      pkt.timestamp = micros()-start_time;
       pkt.mag_accel = mag;
       pkt.capacitance =zohCapacitance;
 
