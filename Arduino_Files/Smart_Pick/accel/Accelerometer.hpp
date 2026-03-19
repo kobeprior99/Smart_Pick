@@ -53,7 +53,7 @@ public:
       //enable activity on xyz axes 
       writeRegister(REG_ACT_INACT_CTL, 0b01110000);
       // 780 mg per lsb
-      writeRegister(REG_ACT_THRSH, 0x07); // adjust sensitivity activity must go above and below the threshold 6 LSBs because I recorded 30 ish baseline from steady state
+      writeRegister(REG_ACT_THRSH, 0x11); // adjust sensitivity activity must go above and below the threshold 6 LSBs because I recorded 30 ish baseline from steady state
                                           
       // Route to INT1 to activity interrupt INT2 to data ready
       writeRegister(REG_INT_MAP, 0b10000000);
