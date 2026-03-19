@@ -185,6 +185,8 @@ void setup() {
 
 //loop---
 void loop() {
+  // Serial.print("[DEBUG] capacitance: ");
+  // Serial.println(zohCapacitance);
   if (Serial.available()) {
     checkSerialCommand();
     return;

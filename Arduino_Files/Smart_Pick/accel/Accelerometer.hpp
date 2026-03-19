@@ -34,7 +34,6 @@
 #define ACC_INT2_PIN 35
 class ACC {
 public:
-
     ACC(TwoWire &wire) : _wire(wire) {}
 
     bool Setup() {

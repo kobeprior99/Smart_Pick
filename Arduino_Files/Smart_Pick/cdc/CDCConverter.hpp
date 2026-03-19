@@ -113,7 +113,7 @@ class CDC {
 
       // Apply offset DAC
       //0xFF top of range
-      writeRegister(AD7746_REG_CAPDACA, 0);
+      writeRegister(AD7746_REG_CAPDACA, 0xA0);
       return true;
     }
 
