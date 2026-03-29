@@ -8,16 +8,15 @@ convert it into forces that can be interpreted to measure bit wear and material 
 
 Authors: 
 Sophia Mimlitz, Kobe Prior
-
+Dates Worked: 
+August 2025 - May 2026
 File Organization:
-
 Arduino_Files
+    Smart_Pick: current code
+    Archieve/: old code
 Python Files
-
-To upload to esp32 from arduino IDE
-    File>Preferences> 
-    type: https://dl.espressif.com/dl/package_esp32_index.json
-    into additional boards manager urls
-    Tools > Board manager
-    type esp32 and install 
-    use an chip id example file to confirm it is working properly
+    main.py main program 
+    config.py config Files
+    media/ folder containing GUI media
+    legacy/: old code
+    

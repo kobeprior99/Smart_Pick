@@ -1,7 +1,12 @@
-Directory Contents:
-\Legacy
-legacy code used in the development of the system
+.
+├── __pycache__/             # Python cache files
+├── config.py                # Python configuration (e.g., baud rate)
+├── legacy/                  # Legacy scripts and previous versions
+├── main.py                  # Main Python GUI application
+├── media/                   # Images and media assets for GUI
+├── README.md                # This file
+├── test 1.csv               # Example CSV data from the device
 
-file name:
-main.py
-description: graphical user interface to view buffered acceleration data and capacitance data in quazi real time
+
+run GUI using :
+python3 main.py
