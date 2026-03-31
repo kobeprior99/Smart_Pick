@@ -113,7 +113,11 @@ class CDC {
 
       // Apply offset DAC
       //0xFF top of range
-      writeRegister(AD7746_REG_CAPDACA, 0xA0);
+      //0xA3 is best for 1/8 inch HDPE to be toward the lower end of the range
+      //0x?? is best for x
+      //0x?? is best for x
+      //0x?? is best for x
+      writeRegister(AD7746_REG_CAPDACA, 0xA3);
       return true;
     }
 

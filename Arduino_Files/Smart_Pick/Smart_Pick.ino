@@ -185,8 +185,15 @@ void setup() {
 
 //loop---
 void loop() {
-  // Serial.print("[DEBUG] capacitance: ");
-  // Serial.println(zohCapacitance);
+   Serial.print("Min:");
+   Serial.print(0);
+   Serial.print(",");
+   Serial.print("[raw-24bit]capacitance:");
+   Serial.print(zohCapacitance);
+   Serial.print(",");
+   Serial.print("Max:");
+   Serial.println(16777215);
+    
   if (Serial.available()) {
     checkSerialCommand();
     return;
