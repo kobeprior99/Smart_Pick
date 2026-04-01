@@ -112,7 +112,7 @@ class CDC {
       // For HDPE based load cells with low starting capacitance disable channel B
       // Use code: 0x03 with no or
       // for extended range use 0x03 | 0b00011000
-      writeRegister(AD7746_REG_EXC_SETUP, 0x03 | 0b00001000);
+      writeRegister(AD7746_REG_EXC_SETUP, 0x03 | 0b00011000);
 
       // Apply offset DAC
       //0xFF top of range
