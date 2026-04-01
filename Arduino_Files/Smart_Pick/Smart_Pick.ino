@@ -185,6 +185,7 @@ void setup() {
 
 //loop---
 void loop() {
+   //only do this to measure capacitance during trial
    Serial.print("Min:");
    Serial.print(0);
    Serial.print(",");
