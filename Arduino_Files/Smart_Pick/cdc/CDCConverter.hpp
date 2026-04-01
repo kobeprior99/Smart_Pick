@@ -106,13 +106,13 @@ class CDC {
       writeRegister(AD7746_REG_CAP_SETUP, AD7746_CAPSETUP_CAPEN_MSK);
 
       // Continuous conversion, faster sampling
-      writeRegister(AD7746_REG_CFG, 0b10000001);
+      writeRegister(AD7746_REG_CFG, 0b10000000);
 
       // Enable excitation A & B, B inverted from A for extended range
       // For HDPE based load cells with low starting capacitance disable channel B
       // Use code: 0x03 with no or
       // for extended range use 0x03 | 0b00011000
-      writeRegister(AD7746_REG_EXC_SETUP, 0x03 | 0b00001000);
+      writeRegister(AD7746_REG_EXC_SETUP, 0x03 | 0b00011000);
 
       // Apply offset DAC
       //0xFF top of range
@@ -120,7 +120,8 @@ class CDC {
       //0x?? is best for x
       //0x?? is best for x
       //0x?? is best for x
-      writeRegister(AD7746_REG_CAPDACA, 0xA3);
+      //non extended range fro hdpe 
+      writeRegister(AD7746_REG_CAPDACA, 0b10000000|0xA5);
       return true;
     }
 
