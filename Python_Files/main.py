@@ -253,7 +253,7 @@ def simulate_page():
             lbl_total    = stat_card('Total Samples', 'total')
             lbl_duration = stat_card('Duration', 'duration')
             lbl_max_acc  = stat_card('Peak Accel (LSB)', 'peak_accel')
-            
+            lbl_cap_range = stat_card('Cap Range', 'cap_range') 
  
     # ── helpers ────────────────────────────────────────────────────────────────
  
@@ -324,11 +324,21 @@ def simulate_page():
             fill='tozeroy',
             fillcolor='rgba(16,185,129,0.08)',
         ))
+
+        cap_min = df_window['capacitance'].min()
+        cap_max = df_window['capacitance'].max()
+        padding = (cap_max - cap_min) * 0.1 or 10  # fallback if flat signal
+
         fig.update_layout(
             margin=dict(l=48, r=16, t=32, b=40),
             title=dict(text='Capacitance (raw ADC counts)', font=dict(size=13)),
             xaxis=dict(title='Time (s)', showgrid=True, gridcolor='#f1f5f9'),
-            yaxis=dict(title='ADC counts', showgrid=True, gridcolor='#f1f5f9'),
+            yaxis=dict(
+                title='ADC counts',
+                showgrid=True,
+                gridcolor='#f1f5f9',
+                range=[cap_min - padding, cap_max + padding],  # zoom to data
+            ),
             plot_bgcolor='white',
             paper_bgcolor='white',
             showlegend=False,
@@ -364,8 +374,8 @@ def simulate_page():
         lbl_total.text    = f'{len(df):,}'
         lbl_duration.text = f'{duration_s:.2f} s'
         lbl_max_acc.text  = f'{int(df["acceleration"].max())}'
-        cap_min = df['capacitance'].min()
-        cap_max = df['capacitance'].max()
+        cap_min = 6_000_000 
+        cap_max = 9_000_000 
         lbl_cap_range.text = f'{cap_max - cap_min:,}'
  
     def handle_upload(e):
@@ -470,15 +480,6 @@ def increment_capDAC():
     </style>
     ''')
  
-    # ── state ──────────────────────────────────────────────────────────────────
-    state = {
-        'df': None,           # full dataframe
-        'window_start': 0,    # current window start index
-        'window_size': 400,   # number of samples in view (~500ms at 800Hz)
-        'playing': False,
-        'play_task': None,
-    }
- 
     # ── header ─────────────────────────────────────────────────────────────────
     with ui.row().style(
         'width: 100%; padding: 16px 24px; box-sizing: border-box; '
@@ -490,50 +491,53 @@ def increment_capDAC():
         ui.label('Increment CAPDAC').style(
             'font-size: 1.3rem; font-weight: 600; margin-left: 12px;'
         )
-    #--controls_____________________________________________
-    with ui.column().style('width:100%; padding: 24px; box-sizing: border-box;align-items: center;'):
-        ui.label('Adjust CAPDAC').style('font-size: 1rem; font-weight: 500; margin-bottom: 8px;')
+        with ui.column().style('width:100%; padding: 24px; box-sizing: border-box; align-items: center;'):
+                ui.label('Adjust CAPDAC').style('font-size: 1rem; font-weight: 500; margin-bottom: 8px;')
+                slider = ui.slider(min=-63, max=63, value=0, step=1).style('width: 60%;')
+                slider_label = ui.label('Increment: 0').style('margin-top: 4px; color: #555;')
+                slider.on('update:model-value', lambda e: slider_label.set_text(f'Increment: {e.args}'))
+                status_label = ui.label('').style('margin-top: 8px; color: #888; font-size: 0.9rem;')
 
-        slider = ui.slider(min=-63, max=63, value=0, step=1).style('width: 60%;')
-        slider_label = ui.label('Increment: 0').style('margin-top: 4px; color: #555;')
-        slider.on('update:model-value', lambda e: slider_label.set_text(f'Increment: {e.args}'))
+        # ── submit ─────────────────────────────────────────────────────────────────
 
-        status_label = ui.label('').style('margin-top: 8px; color: #888; font-size: 0.9rem;')
-    # ── submit ─────────────────────────────────────────────────────────────────
+
     async def on_submit():
         amount = int(slider.value)
         status_label.set_text(f'Sending I {amount}...')
-
-        # Send command over serial
         ser.write(f'I {amount}\n'.encode())
 
-        # Wait for response line in format: CAPDAC,RAW
-        await asyncio.sleep(0.5)  # give the device time to respond
-
         response = None
-        deadline = asyncio.get_event_loop().time() + 3.0  # 3 second timeout
+        deadline = asyncio.get_event_loop().time() + 3.0
+
         while asyncio.get_event_loop().time() < deadline:
-            if ser.in_waiting:
-                line = ser.readline().decode().strip()
-                if ',' in line:
-                    response = line
-                    break
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.05)          # yield to UI first
+            if not ser.in_waiting:
+                continue
+            # readline() now returns within 0.1s due to timeout=0.1
+            line = ser.readline().decode(errors='ignore').strip()
+            print(f"RX: {line}")
+            if ',' in line:
+                response = line
+                break
 
         if response:
             parts = response.split(',')
             if len(parts) == 2:
                 capdac_hex = parts[0].strip()
-                raw_val = int(parts[1].strip())
+                raw_val    = parts[1].strip()
                 status_label.set_text(f'CAPDAC: 0x{capdac_hex}   Raw: {raw_val}')
-                slider.set_value(0)  # reset slider to center after submit
+                ui.notify(
+                    f'Received → CAPDAC: 0x{capdac_hex}, Raw: {raw_val}',
+                    type='positive', position='top'
+                )
+                slider.set_value(0)
                 slider_label.set_text('Increment: 0')
         else:
             status_label.set_text('No response from device.')
-
+            ui.notify('No response from device', type='negative', position='top')
     ui.button('Submit', on_click=on_submit).style(
         'margin-top: 16px; background: #3b82f6; color: white;'
-    )
+        )
 
  
 # ── Main page ──────────────────────────────────────────────────────────────────

@@ -120,8 +120,8 @@ class CDC {
       //0x?? is best for x
       //0x?? is best for x
       //0x?? is best for x
-      //0xFF for full radius 1/8th inch
-      writeRegister(AD7746_REG_CAPDACA, 0xFF);
+      //0xFF for full radius 1/8th inch 0x80|0x1E
+      writeRegister(AD7746_REG_CAPDACA, 0x80|0x0);
       return true;
     }
 
@@ -150,7 +150,7 @@ class CDC {
 
   private:
     TwoWire &_wire;
-    uint8_t _capDAC = 0xFF; // tracks current value of capDAC
+    uint8_t _capDAC = 0x80|0x0; // tracks current value of capDAC
                            //
     void writeRegister(uint8_t reg, uint8_t value) {
       _wire.beginTransmission(AD7746_ADDRESS);
