@@ -138,9 +138,19 @@ class CDC {
 
       return value;
     }
+     void incrementCapDAC(int8_t amount) {
+        int16_t newVal = (int16_t)(_capDAC & 0x7F) + amount;  // strip MSB before math
+        if (newVal > 0x7F) newVal = 0x7F;
+        if (newVal < 0x00) newVal = 0x00;
+        _capDAC = (uint8_t)newVal;
+        writeRegister(AD7746_REG_CAPDACA, 0x80 | _capDAC);    // force MSB on for write
+    }
+    uint8_t getCapDAC(){return _capDAC;}
 
   private:
     TwoWire &_wire;
+    uint8_t _capDAC = 0xA3; // tracks current value of capDAC
+                           //
     void writeRegister(uint8_t reg, uint8_t value) {
       _wire.beginTransmission(AD7746_ADDRESS);
       _wire.write(reg);
