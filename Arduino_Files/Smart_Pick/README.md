@@ -130,6 +130,7 @@ Ensure all connections are secure before powering the system.
 | `E` | End recording and flush data |
 | `D` | Erase flash memory |
 | `T` | Run flash integrity test |
+| `I` | I followed by an integer positive or negative increments CAPDAC |
 
 ---
 

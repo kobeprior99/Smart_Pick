@@ -109,18 +109,6 @@ void checkSerialCommand() {
       pkt.reserved = 0;
       flashLogger.appendPacket(pkt);
     }
-  if (cmd == 'I'|| cmd == 'i'){
-    int amount = Serial.parseInt();
-    cdc.incrementCapDAC(amount);
-    //wiat for fresh data
-    while(!cdc.dataReady()){delay(1);}
-    uint32_t raw = cdc.readCapacitanceRaw();
-      Serial.print("CAPDAC: 0x");
-      Serial.print(cdc.getCapDAC(),HEX);
-      Serial.print("   Raw: ");
-      Serial.println(raw);
-    }
-
     // Force everything to flash
     flashLogger.finalizeLog();
 
@@ -160,6 +148,22 @@ void checkSerialCommand() {
 
     Serial.println(allPassed ? "ALL PASSED" : "FAILURES DETECTED");
   }
+  if (cmd == 'I' || cmd == 'i') {
+    Serial.print("Iterate Command Entered, enter the interation amount:");
+    // Wait until the user sends something
+    int amount = Serial.parseInt();
+    cdc.incrementCapDAC(amount);
+    // Flush two full conversions by actually reading the data registers
+    for (int i = 0; i < 2; i++) {
+        while (!cdc.dataReady()) { delay(1); }
+        cdc.readCapacitanceRaw();  // this clears RDYCAP by reading the data registers
+    }
+    uint32_t raw = cdc.readCapacitanceRaw();
+    Serial.print("CAPDAC: 0x");
+    Serial.print(cdc.getCapDAC(), HEX);
+    Serial.print("   Raw: ");
+    Serial.println(raw);
+  }
 }
 
 //setup
@@ -196,16 +200,16 @@ void setup() {
 
 //loop---
 void loop() {
-   //only do this to measure capacitance during trial
-   // Serial.print("Min:");
-   // Serial.print(0);
-   // Serial.print(",");
-   // Serial.print("[raw-24bit]capacitance:");
-   // Serial.print(zohCapacitance);
-   // Serial.print(",");
-   // Serial.print("Max:");
-   // Serial.println(16777215);
-    
+  //only do this to measure capacitance during trial
+  // Serial.print("Min:");
+  // Serial.print(0);
+  // Serial.print(",");
+  // Serial.print("[raw-24bit]capacitance:");
+  // Serial.print(zohCapacitance);
+  // Serial.print(",");
+  // Serial.print("Max:");
+  // Serial.println(16777215);
+
   if (Serial.available()) {
     checkSerialCommand();
     return;
