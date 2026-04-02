@@ -159,9 +159,8 @@ void checkSerialCommand() {
         cdc.readCapacitanceRaw();  // this clears RDYCAP by reading the data registers
     }
     uint32_t raw = cdc.readCapacitanceRaw();
-    Serial.print("CAPDAC: 0x");
     Serial.print(cdc.getCapDAC(), HEX);
-    Serial.print("   Raw: ");
+    Serial.print(",");
     Serial.println(raw);
   }
 }
@@ -200,7 +199,7 @@ void setup() {
 
 //loop---
 void loop() {
-  //only do this to measure capacitance during trial
+ // only do this to measure capacitance during trial
   // Serial.print("Min:");
   // Serial.print(0);
   // Serial.print(",");

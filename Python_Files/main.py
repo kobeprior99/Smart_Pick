@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from config import BAUDRATE
 import io
+import numpy as np
 
 ser = None
 erase_dialog = None
@@ -252,7 +253,7 @@ def simulate_page():
             lbl_total    = stat_card('Total Samples', 'total')
             lbl_duration = stat_card('Duration', 'duration')
             lbl_max_acc  = stat_card('Peak Accel (LSB)', 'peak_accel')
-            lbl_cap_range = stat_card('Cap Range', 'cap_range')
+            
  
     # ── helpers ────────────────────────────────────────────────────────────────
  
@@ -290,7 +291,7 @@ def simulate_page():
         #fft_plot
         N = len(acc)
         fft_vals = np.fft.rfft(acc)
-        freqs = np.fft.rfftfrequ(N, d=dt)
+        freqs = np.fft.rfftfreq(N, d=dt)
         magnitude = np.abs(fft_vals) / N
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -311,7 +312,7 @@ def simulate_page():
             hovermode='x unified',
         )
 
-        return fig.to_dict()V
+        return fig.to_dict()
     def make_cap_figure(df_window):
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -447,6 +448,94 @@ def simulate_page():
  
 
 
+@ui.page('/increment_capDAC')
+def increment_capDAC():
+    ui.add_head_html('''
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; }
+        .nicegui-content { height: 100vh; display: flex; flex-direction: column; padding: 0 !important; }
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            transition: border-color 0.2s, background 0.2s;
+            cursor: pointer;
+            background: #f8fafc;
+        }
+        .upload-zone:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+    </style>
+    ''')
+ 
+    # ── state ──────────────────────────────────────────────────────────────────
+    state = {
+        'df': None,           # full dataframe
+        'window_start': 0,    # current window start index
+        'window_size': 400,   # number of samples in view (~500ms at 800Hz)
+        'playing': False,
+        'play_task': None,
+    }
+ 
+    # ── header ─────────────────────────────────────────────────────────────────
+    with ui.row().style(
+        'width: 100%; padding: 16px 24px; box-sizing: border-box; '
+        'align-items: center; border-bottom: 1px solid #e0e0e0; '
+        'background: white; flex-shrink: 0;'
+    ):
+        ui.button(icon='arrow_back', on_click=lambda: ui.navigate.to('/')) \
+            .props('flat round')
+        ui.label('Increment CAPDAC').style(
+            'font-size: 1.3rem; font-weight: 600; margin-left: 12px;'
+        )
+    #--controls_____________________________________________
+    with ui.column().style('width:100%; padding: 24px; box-sizing: border-box;align-items: center;'):
+        ui.label('Adjust CAPDAC').style('font-size: 1rem; font-weight: 500; margin-bottom: 8px;')
+
+        slider = ui.slider(min=-63, max=63, value=0, step=1).style('width: 60%;')
+        slider_label = ui.label('Increment: 0').style('margin-top: 4px; color: #555;')
+        slider.on('update:model-value', lambda e: slider_label.set_text(f'Increment: {e.args}'))
+
+        status_label = ui.label('').style('margin-top: 8px; color: #888; font-size: 0.9rem;')
+    # ── submit ─────────────────────────────────────────────────────────────────
+    async def on_submit():
+        amount = int(slider.value)
+        status_label.set_text(f'Sending I {amount}...')
+
+        # Send command over serial
+        ser.write(f'I {amount}\n'.encode())
+
+        # Wait for response line in format: CAPDAC,RAW
+        await asyncio.sleep(0.5)  # give the device time to respond
+
+        response = None
+        deadline = asyncio.get_event_loop().time() + 3.0  # 3 second timeout
+        while asyncio.get_event_loop().time() < deadline:
+            if ser.in_waiting:
+                line = ser.readline().decode().strip()
+                if ',' in line:
+                    response = line
+                    break
+            await asyncio.sleep(0.05)
+
+        if response:
+            parts = response.split(',')
+            if len(parts) == 2:
+                capdac_hex = parts[0].strip()
+                raw_val = int(parts[1].strip())
+                status_label.set_text(f'CAPDAC: 0x{capdac_hex}   Raw: {raw_val}')
+                slider.set_value(0)  # reset slider to center after submit
+                slider_label.set_text('Increment: 0')
+        else:
+            status_label.set_text('No response from device.')
+
+    ui.button('Submit', on_click=on_submit).style(
+        'margin-top: 16px; background: #3b82f6; color: white;'
+    )
+
+ 
 # ── Main page ──────────────────────────────────────────────────────────────────
 @ui.page('/')
 def main_page():
@@ -549,14 +638,22 @@ def main_page():
 
         # Right: simulate miner experience — navigates to /simulate
         with ui.element('div').style(
-            'flex: 1; display: flex; flex-direction: column; align-items: stretch;'
+            'flex: 1; display: flex; flex-direction: column; align-items: stretch; gap: 20px;'
         ):
             ui.button(
                 'Simulate Miner Experience',
                 icon='precision_manufacturing',
                 on_click=lambda: ui.navigate.to('/simulate')
             ).classes('big-btn hover-lift').style(
-                'height: 100%; background-color: #757575 !important; '
+                'height: 45%; background-color: #757575 !important; '
+                'color: #ffffff !important;'
+            )
+            ui.button(
+                'Increment CAPDAC',
+                icon='thumb_up',
+                on_click=lambda: ui.navigate.to('/increment_capDAC')
+            ).classes('big-btn hover-lift').style(
+                'height: 40%; background-color: #DB324D !important; '
                 'color: #ffffff !important;'
             )
 
