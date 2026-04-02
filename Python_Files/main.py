@@ -192,6 +192,7 @@ def simulate_page():
         )
         with chart_card:
             accel_plot = ui.plotly({}).style('width: 100%; height: 280px;')
+            fft_plot = ui.plotly({}).style('width: 100%; height: 220px;')
             cap_plot   = ui.plotly({}).style('width: 100%; height: 280px;')
  
         # ── playback controls ──────────────────────────────────────────────────
@@ -275,7 +276,42 @@ def simulate_page():
             hovermode='x unified',
         )
         return fig.to_dict()
- 
+    def make_fft_figure(df_window):
+        acc = df_window['acceleration'].values
+        if len(acc) < 2:
+            return {}
+        #estimate the sampling frequency from timestamps
+        t = df_window['timestamp_us'].values / 1_000_000
+        dt = np.mean(np.diff(t))
+        fs = 1.0 /dt if dt > 0 else 1
+        #remove DC
+        acc = acc - np.mean(acc)
+
+        #fft_plot
+        N = len(acc)
+        fft_vals = np.fft.rfft(acc)
+        freqs = np.fft.rfftfrequ(N, d=dt)
+        magnitude = np.abs(fft_vals) / N
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+        x=freqs,
+        y=magnitude,
+        mode='lines',
+        line=dict(color='#ef4444', width=1.5),
+    ))
+
+        fig.update_layout(
+            margin=dict(l=48, r=16, t=32, b=40),
+            title=dict(text='Acceleration FFT (Magnitude Spectrum)', font=dict(size=13)),
+            xaxis=dict(title='Frequency (Hz)', showgrid=True, gridcolor='#f1f5f9'),
+            yaxis=dict(title='Magnitude', showgrid=True, gridcolor='#f1f5f9'),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            showlegend=False,
+            hovermode='x unified',
+        )
+
+        return fig.to_dict()V
     def make_cap_figure(df_window):
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -309,6 +345,10 @@ def simulate_page():
 
         accel_plot.figure = make_accel_figure(window)
         accel_plot.update()
+        
+        fft_plot.figure = make_fft_figure(window)
+        fft_plot.update()
+
         cap_plot.figure = make_cap_figure(window)
         cap_plot.update()
  
