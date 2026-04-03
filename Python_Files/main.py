@@ -192,6 +192,9 @@ def simulate_page():
             'width: 100%; padding: 16px; box-sizing: border-box;'
         )
         with chart_card:
+            ma_input = ui.number(
+                label='MA window', value=20, min=1, max=500, step=1
+                ).style('width: 100px;')
             accel_plot = ui.plotly({}).style('width: 100%; height: 280px;')
             fft_plot = ui.plotly({}).style('width: 100%; height: 220px;')
             cap_plot   = ui.plotly({}).style('width: 100%; height: 280px;')
@@ -222,7 +225,7 @@ def simulate_page():
                 ui.label('Window:').style('color: #64748b; font-size: 0.85rem;')
                 ui.select(
                     options={200: '200 samples', 400: '400 samples',
-                              800: '800 samples', 1600: '1600 samples'},
+                             800: '800 samples', 1600: '1600 samples', 3200: '3200 samples', 6400: '6400 samples'},
                     value=400,
                     on_change=lambda e: set_window_size(e.value)
                 ).style('min-width: 140px;')
@@ -313,21 +316,34 @@ def simulate_page():
         )
 
         return fig.to_dict()
-    def make_cap_figure(df_window):
+    def make_cap_figure(df_window, ma_window=20):
         fig = go.Figure()
+
+        # Raw signal (faded)
         fig.add_trace(go.Scatter(
             x=df_window['timestamp_us'] / 1_000_000,
             y=df_window['capacitance'],
             mode='lines',
-            name='Capacitance',
-            line=dict(color='#10b981', width=1.5),
+            name='Raw',
+            line=dict(color='rgba(16,185,129,0.25)', width=1),
             fill='tozeroy',
-            fillcolor='rgba(16,185,129,0.08)',
+            fillcolor='rgba(16,185,129,0.04)',
         ))
 
-        cap_min = df_window['capacitance'].min()
-        cap_max = df_window['capacitance'].max()
-        padding = (cap_max - cap_min) * 0.1 or 10  # fallback if flat signal
+        # Moving average overlay
+        ma = df_window['capacitance'].rolling(window=ma_window, center=True, min_periods=1).mean()
+        fig.add_trace(go.Scatter(
+            x=df_window['timestamp_us'] / 1_000_000,
+            y=ma,
+            mode='lines',
+            name=f'MA({ma_window})',
+            line=dict(color='#10b981', width=2),
+        ))
+
+        # Base y-range on the MA to avoid raw spikes dominating
+        cap_min = ma.min()
+        cap_max = ma.max()
+        padding = (cap_max - cap_min) * 0.1 or 10
 
         fig.update_layout(
             margin=dict(l=48, r=16, t=32, b=40),
@@ -337,11 +353,11 @@ def simulate_page():
                 title='ADC counts',
                 showgrid=True,
                 gridcolor='#f1f5f9',
-                range=[cap_min - padding, cap_max + padding],  # zoom to data
+                range=[cap_min - padding, cap_max + padding],
             ),
             plot_bgcolor='white',
             paper_bgcolor='white',
-            showlegend=False,
+            showlegend=True,
             hovermode='x unified',
         )
         return fig.to_dict()
@@ -360,7 +376,7 @@ def simulate_page():
         fft_plot.figure = make_fft_figure(window)
         fft_plot.update()
 
-        cap_plot.figure = make_cap_figure(window)
+        cap_plot.figure = make_cap_figure(window, ma_window = int(ma_input.value))
         cap_plot.update()
  
         # update slider and position label

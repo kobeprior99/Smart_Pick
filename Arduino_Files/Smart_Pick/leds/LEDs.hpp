@@ -68,7 +68,7 @@ public:
       flash(B2_PIN);
     }  
 
-    void ThresholdB_Reached(){
+    void I2C_Passed(){
       flash(B3_PIN);
     }  
 };

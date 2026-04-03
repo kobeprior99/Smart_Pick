@@ -149,7 +149,6 @@ void checkSerialCommand() {
     Serial.println(allPassed ? "ALL PASSED" : "FAILURES DETECTED");
   }
   if (cmd == 'I' || cmd == 'i') {
-    Serial.print("Iterate Command Entered, enter the interation amount:");
     // Wait until the user sends something
     int amount = Serial.parseInt();
     cdc.incrementCapDAC(amount);
@@ -159,6 +158,7 @@ void checkSerialCommand() {
         cdc.readCapacitanceRaw();  // this clears RDYCAP by reading the data registers
     }
     uint32_t raw = cdc.readCapacitanceRaw();
+    Serial.print("0x")
     Serial.print(cdc.getCapDAC(), HEX);
     Serial.print(",");
     Serial.println(raw);
@@ -172,10 +172,17 @@ void setup() {
   I2C_CDC.begin(11, 10, 400000);
   I2C_ACC.begin(41, 40, 400000);
   if (!cdc.Setup()) Serial.println("ERROR: CDC not found");
-  else Serial.println("CDC ok");
+  else {
+    Serial.println("CDC ok"); 
+    leds.I2C_Passed();
+  }
+
 
   if (!acc.Setup()) Serial.println("ERROR: ACC not found");
-  else Serial.println("ACC ok");
+  else {
+    Serial.println("ACC ok"); 
+    leds.I2C_Passed();
+  }
 
   if (!flashLogger.begin()) {
     Serial.println("ERROR: Flash not found");
