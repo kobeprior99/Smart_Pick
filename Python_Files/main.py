@@ -512,50 +512,32 @@ def increment_capDAC():
                 slider = ui.slider(min=-63, max=63, value=0, step=1).style('width: 60%;')
                 slider_label = ui.label('Increment: 0').style('margin-top: 4px; color: #555;')
                 slider.on('update:model-value', lambda e: slider_label.set_text(f'Increment: {e.args}'))
-                status_label = ui.label('').style('margin-top: 8px; color: #888; font-size: 0.9rem;')
 
         # ── submit ─────────────────────────────────────────────────────────────────
-
-
-    async def on_submit():
-        amount = int(slider.value)
-        status_label.set_text(f'Sending I {amount}...')
-        ser.write(f'I {amount}\n'.encode())
-
-        response = None
-        deadline = asyncio.get_event_loop().time() + 3.0
-
-        while asyncio.get_event_loop().time() < deadline:
-            await asyncio.sleep(0.05)          # yield to UI first
-            if not ser.in_waiting:
-                continue
-            # readline() now returns within 0.1s due to timeout=0.1
-            line = ser.readline().decode(errors='ignore').strip()
-            print(f"RX: {line}")
-            if ',' in line:
-                response = line
-                break
-
-        if response:
-            parts = response.split(',')
-            if len(parts) == 2:
-                capdac_hex = parts[0].strip()
-                raw_val    = parts[1].strip()
-                status_label.set_text(f'CAPDAC: 0x{capdac_hex}   Raw: {raw_val}')
-                ui.notify(
-                    f'Received → CAPDAC: 0x{capdac_hex}, Raw: {raw_val}',
-                    type='positive', position='top'
-                )
-                slider.set_value(0)
-                slider_label.set_text('Increment: 0')
-        else:
-            status_label.set_text('No response from device.')
-            ui.notify('No response from device', type='negative', position='top')
-    ui.button('Submit', on_click=on_submit).style(
-        'margin-top: 16px; background: #3b82f6; color: white;'
-        )
-
- 
+                async def on_submit():
+                    amount = int(slider.value)
+                    ser.write(f'I {amount}\n'.encode())
+                    
+                    while True:
+                        await asyncio.sleep(0.1)
+                        if ser.in_waiting > 0:
+                            line = ser.readline().decode('utf-8', errors='ignore').strip()
+                            if not line:
+                                continue
+                            if line.startswith('0x'):
+                                parts = line.split(',')
+                                if len(parts) == 2:
+                                    capdac_hex = parts[0]
+                                    raw = parts[1]
+                                    ui.notify(f'CAPDAC: {capdac_hex}  Raw: {raw}', type='positive')
+                                else:
+                                    ui.notify(line, type='info')
+                                break
+                            elif 'ERROR' in line:
+                                ui.notify(f'Error: {line}', type='negative')
+                                break
+             
+                ui.button('Submit', on_click=on_submit).style('margin-top: 16px; background: #3b82f6; color: white;')
 # ── Main page ──────────────────────────────────────────────────────────────────
 @ui.page('/')
 def main_page():

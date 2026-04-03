@@ -158,10 +158,11 @@ void checkSerialCommand() {
         cdc.readCapacitanceRaw();  // this clears RDYCAP by reading the data registers
     }
     uint32_t raw = cdc.readCapacitanceRaw();
-    Serial.print("0x")
+    Serial.print("0x");
     Serial.print(cdc.getCapDAC(), HEX);
     Serial.print(",");
     Serial.println(raw);
+    leds.INC_CAPDAC();
   }
 }
 

@@ -71,6 +71,10 @@ public:
     void I2C_Passed(){
       flash(B3_PIN);
     }  
+    void INC_CAPDAC(){
+      flash(RED_PIN);
+    }
+
 };
   
 
