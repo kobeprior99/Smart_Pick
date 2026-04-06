@@ -103,7 +103,7 @@ public:
         // allows the pins to return low until the next event
         readRegister(REG_INT_SOURCE);
     }
-    uint32_t readAccelMagnitude() {
+    int32_t readAccelMagnitude() {
 
         uint8_t buffer[6];
 
@@ -115,14 +115,16 @@ public:
 
         for(int i=0;i<6;i++)
             buffer[i] = _wire.read();
+        //maybe we should look at 
+        // int16_t x = (buffer[1] << 8) | buffer[0];
+        // int16_t y = (buffer[3] << 8) | buffer[2];
+        // int16_t z = (buffer[5] << 8) | buffer[4];
+        //int32_t x = (buffer[1] << 8) | buffer[0];
 
-        int16_t x = (buffer[1] << 8) | buffer[0];
-        int16_t y = (buffer[3] << 8) | buffer[2];
-        int16_t z = (buffer[5] << 8) | buffer[4];
-
-        uint32_t mag = sqrt((int32_t)x*x + (int32_t)y*y + (int32_t)z*z);
-
-        return mag;//raw LSB needs to be converted with 49 mg/LSB in post
+        int32_t y = (buffer[3] << 8) | buffer[2];
+        // uint32_t  = sqrt((int32_t)x*x + (int32_t)y*y + (int32_t)z*z);
+        // reurn mag;//raw LSB needs to be converted with 49 mg/LSB in post
+        return y;//raw LSB needs to be converted with 49 mg/LSB in post
     }
 
 private:

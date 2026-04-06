@@ -225,7 +225,7 @@ def simulate_page():
                 ui.label('Window:').style('color: #64748b; font-size: 0.85rem;')
                 ui.select(
                     options={200: '200 samples', 400: '400 samples',
-                             800: '800 samples', 1600: '1600 samples', 3200: '3200 samples', 6400: '6400 samples'},
+                             800: '800 samples', 1600: '1600 samples', 3200: '3200 samples', 6400: '6400 samples',12800: '12800 samples'},
                     value=400,
                     on_change=lambda e: set_window_size(e.value)
                 ).style('min-width: 140px;')
@@ -297,9 +297,10 @@ def simulate_page():
         freqs = np.fft.rfftfreq(N, d=dt)
         magnitude = np.abs(fft_vals) / N
         fig = go.Figure()
+        # exclude the 0 Hz bin 
         fig.add_trace(go.Scatter(
-        x=freqs,
-        y=magnitude,
+            x=freqs[1:],
+            y=magnitude[1:],
         mode='lines',
         line=dict(color='#ef4444', width=1.5),
     ))

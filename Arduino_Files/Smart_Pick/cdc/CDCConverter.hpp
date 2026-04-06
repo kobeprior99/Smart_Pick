@@ -121,7 +121,8 @@ class CDC {
       //0x?? is best for x
       //0x?? is best for x
       //0xFF for full radius 1/8th inch 0x80|0x1E
-      writeRegister(AD7746_REG_CAPDACA, 0x80|0x0);
+      //0x32 for full radius 1/16th inch hdpe green and white wire
+      writeRegister(AD7746_REG_CAPDACA, 0x80|0x32);
       return true;
     }
 

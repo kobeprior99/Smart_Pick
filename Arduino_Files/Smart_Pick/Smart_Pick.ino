@@ -158,11 +158,11 @@ void checkSerialCommand() {
         cdc.readCapacitanceRaw();  // this clears RDYCAP by reading the data registers
     }
     uint32_t raw = cdc.readCapacitanceRaw();
+    leds.INC_CAPDAC();//adds 100ms delay
     Serial.print("0x");
     Serial.print(cdc.getCapDAC(), HEX);
     Serial.print(",");
     Serial.println(raw);
-    leds.INC_CAPDAC();
   }
 }
 
@@ -242,7 +242,7 @@ void loop() {
     //use isr timestamp not current time
     uint32_t sampleTs = isrTimestamp;
     //read acceleration and capacitance if available
-    uint32_t mag = acc.readAccelMagnitude();
+    int32_t mag = acc.readAccelMagnitude();
     if (cdc.dataReady()) {
       zohCapacitance = cdc.readCapacitanceRaw();
     }
