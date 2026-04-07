@@ -1,5 +1,39 @@
-//This is a test file using simple interrupts and super loop
-
+/**
+ * @file    Smart_Pick.ino
+ * @brief   Smart Pick — activity-triggered capacitance & acceleration logger
+ *
+ * Records 3-axis acceleration magnitude and raw capacitance to an
+ * on-board SPI flash chip (128 Mbit / 16 MB).  An accelerometer
+ * activity interrupt (INT1) arms the recorder; a data-ready interrupt
+ * (INT2) drives sample acquisition at ~800 Hz.  A zero-order-hold
+ * strategy carries the last valid CDC reading forward between
+ * conversions so every flash packet has both sensor values.
+ *
+ * Serial commands (115200 baud):
+ *   R  Read all logged packets back as CSV (timestamp_us, accel, cap)
+ *   E  End recording and flush the write buffer to flash
+ *   D  Bulk-erase the entire log region (~2 min)
+ *   T  Write and verify a 10-packet test pattern
+ *   I  Increment the CAPDAC offset by N codes (e.g. "I5")
+ *
+ * Hardware connections:
+ *   I2C bus 0 — CDC converter   SDA=11  SCL=10  (400 kHz)
+ *   I2C bus 1 — Accelerometer   SDA=41  SCL=40  (400 kHz)
+ *   SPI       — Flash chip      CS/CLK/MOSI/MISO (device-defined pins)
+ *   INT1      — Activity ISR    (ACC_INT1_PIN, RISING)
+ *   INT2      — Data-ready ISR  (ACC_INT2_PIN, RISING)
+ *
+ * Dependencies:
+ *   flash/flash.hpp          Double-buffered SPI flash logger
+ *   accel/Accelerometer.hpp  Accelerometer driver (magnitude output)
+ *   cdc/CDCConverter.hpp     Capacitance-to-digital converter driver
+ *   leds/LEDs.hpp            Status LED state machine
+ *   Wire.h                   Arduino TwoWire (ESP32)
+ *
+ * @author  Kobe Prior
+ * @date    April 7 2026
+ * @version 11.1.2
+ */
 #include "flash/flash.hpp"
 #include "accel/Accelerometer.hpp"
 #include "cdc/CDCConverter.hpp"
@@ -243,6 +277,8 @@ void loop() {
     uint32_t sampleTs = isrTimestamp;
     //read acceleration and capacitance if available
     int32_t mag = acc.readAccelMagnitude();
+    //debug:
+    // Serial.println(mag);
     if (cdc.dataReady()) {
       zohCapacitance = cdc.readCapacitanceRaw();
     }

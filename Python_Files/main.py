@@ -149,6 +149,7 @@ def simulate_page():
         'window_size': 400,   # number of samples in view (~500ms at 800Hz)
         'playing': False,
         'play_task': None,
+        'default_window_size': 400
     }
  
     # ── header ─────────────────────────────────────────────────────────────────
@@ -195,7 +196,11 @@ def simulate_page():
             ma_input = ui.number(
                 label='MA window', value=20, min=1, max=500, step=1
                 ).style('width: 100px;')
+            max_time_input = ui.number(
+                label='Max time (s)', value=None, min=0, step=0.1, placeholder='all'
+                ).style('width: 120px;')
             accel_plot = ui.plotly({}).style('width: 100%; height: 280px;')
+            accel_plot.on('plotly_selected', lambda e: handle_selection(e))
             fft_plot = ui.plotly({}).style('width: 100%; height: 220px;')
             cap_plot   = ui.plotly({}).style('width: 100%; height: 280px;')
  
@@ -209,10 +214,14 @@ def simulate_page():
                 'color: #64748b; margin-bottom: 12px; display: block;'
             )
             with ui.row().style('align-items: center; gap: 16px; flex-wrap: wrap;'):
- 
+                btn_zoom_out = ui.button(icon = 'zoom_out', on_click=lambda: reset_window())\
+                    .props('flat round').tooltip('reset window size')
                 btn_rewind = ui.button(icon='skip_previous', on_click=lambda: rewind()) \
                     .props('flat round').tooltip('Rewind to start')
  
+                # step-forward button
+                btn_step = ui.button(icon='skip_next', on_click=lambda: step_forward())\
+                    .props('flat round').tooltip('Step forward 1 sample')
                 btn_play = ui.button(icon='play_arrow', on_click=lambda: toggle_play()) \
                     .props('flat round').tooltip('Play / Pause')
  
@@ -220,7 +229,6 @@ def simulate_page():
                 slider = ui.slider(min=0, max=100, value=0, step=1) \
                     .style('flex: 1; min-width: 200px;') \
                     .on('change', lambda e: seek(e.args))
- 
                 # window size selector
                 ui.label('Window:').style('color: #64748b; font-size: 0.85rem;')
                 ui.select(
@@ -259,7 +267,14 @@ def simulate_page():
             lbl_cap_range = stat_card('Cap Range', 'cap_range') 
  
     # ── helpers ────────────────────────────────────────────────────────────────
- 
+    def get_df():
+        df = state['df']
+        if df is None:
+                return None
+        max_t = max_time_input.value
+        if max_t is not None and max_t >0:
+            df = df[df['timestamp_us'] <= max_t *1_000_000]
+        return df if len(df) >0 else None
     def make_accel_figure(df_window):
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -278,6 +293,8 @@ def simulate_page():
             paper_bgcolor='white',
             showlegend=False,
             hovermode='x unified',
+            dragmode = 'select',
+            selectdirection='h'
         )
         return fig.to_dict()
     def make_fft_figure(df_window):
@@ -356,6 +373,13 @@ def simulate_page():
                 gridcolor='#f1f5f9',
                 range=[cap_min - padding, cap_max + padding],
             ),
+            legend=dict(
+                x=0.01,
+                y=0.99,
+                xanchor='left',
+                yanchor='top',
+                bgcolor='rgba(255,255,255,0.7)',
+            ),
             plot_bgcolor='white',
             paper_bgcolor='white',
             showlegend=True,
@@ -364,7 +388,7 @@ def simulate_page():
         return fig.to_dict()
  
     def update_plots():
-        df = state['df']
+        df = get_df() 
         if df is None:
             return
         i = state['window_start']
@@ -432,7 +456,37 @@ def simulate_page():
         btn_play.props('icon=play_arrow')
         state['window_start'] = 0
         update_plots()
- 
+    def step_forward():
+        if state['df'] is None:
+            return
+        df = get_df()
+        max_start = max(0,len(df) - state['window_size'])
+        state['window_start'] = min(state['window_start']+1,max_start)
+        update_plots()
+    def handle_selection(e):
+        if state['df'] is None or not e.args:
+                return
+        data = e.args  
+        try:
+            x_min = data['range']['x'][0]   # seconds
+            x_max = data['range']['x'][1]
+        except (KeyError, TypeError):
+            return
+
+        df = get_df()
+        # convert time range to sample indices
+        times = df['timestamp_us'] / 1_000_000
+        i_start = int((times - x_min).abs().argmin())
+        i_end   = int((times - x_max).abs().argmin())
+
+        state['window_start'] = i_start
+        state['window_size']  = max(1, i_end - i_start)
+        update_plots()
+# reset restores to last dropdown value
+    def reset_window():
+        state['window_size'] = state['default_window_size']
+        update_plots()
+
     def seek(pct):
         if state['df'] is None:
             return
@@ -442,6 +496,7 @@ def simulate_page():
  
     def set_window_size(size):
         state['window_size'] = size
+        state['default_window_size'] = size
         update_plots()
  
     def toggle_play():

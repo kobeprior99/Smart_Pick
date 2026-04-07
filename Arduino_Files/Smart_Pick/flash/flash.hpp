@@ -46,7 +46,7 @@
 // PACKET FORMAT
 struct __attribute__((packed)) FlashPacket {
     uint32_t timestamp;
-    uint32_t mag_accel;
+    int32_t mag_accel;
     uint32_t capacitance;
     uint32_t reserved; //4 more bytes just to make even 16
 };
