@@ -201,7 +201,7 @@ def simulate_page():
                 ).style('width: 120px;')
             accel_plot = ui.plotly({}).style('width: 100%; height: 280px;')
             accel_plot.on('plotly_selected', lambda e: handle_selection(e))
-            fft_plot = ui.plotly({}).style('width: 100%; height: 220px;')
+            fft_plot = ui.plotly({}).style('width: 100%; height: 280px;')
             cap_plot   = ui.plotly({}).style('width: 100%; height: 280px;')
  
         # ── playback controls ──────────────────────────────────────────────────
